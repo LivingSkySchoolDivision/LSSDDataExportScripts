@@ -2,11 +2,10 @@ param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
     [string]$ConfigFilePath = "$(Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent)/config.xml"
  )
-####################################################################
-# CONNECTION STRING                                                # 
-# This script requires an XML file in the same folder, containing  #
-# the database connection string for the SIS database              #
-####################################################################
+
+##############################################
+# Script configuration                       #
+##############################################
 
 # SQL Query to run
 # The output CSV file will use column names from your SQL query.
