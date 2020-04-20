@@ -14,7 +14,7 @@ $SqlQuery = "SELECT
                 s.iStaffID as StaffGUID, 
                 cFirstName as FirstName, 
                 cLastName as LastName, 
-                s.iSchoolID AS SchoolID, 
+                '' AS SchoolID, 
                 '' as Prefix, 
                 '' as Title, 
                 '' as StaffType, 
