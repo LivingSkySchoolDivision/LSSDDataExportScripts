@@ -1,6 +1,6 @@
 param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
-    [string]$ConfigFilePath = "$(Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent)/config.xml"
+    [string]$ConfigFilePath
  )
 
 ##############################################
@@ -61,12 +61,19 @@ $QuoteAllColumns = $false
 # No configurable settings beyond this point #
 ##############################################
 
+# Find the config file
+$AdjustedConfigFilePath = $ConfigFilePath
+if ($AdjustedConfigFilePath.Length -le 0) {
+    $AdjustedConfigFilePath = join-path -Path $(Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) -ChildPath "config.xml"
+}
+
 # Retreive the connection string from config.xml
-if ((test-path -Path $ConfigFilePath) -eq $false) {
+if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
     Throw "Config file not found. Specify using -ConfigFilePath. Defaults to config.xml in the directory above where this script is run from."
 }
-$configXML = [xml](Get-Content $ConfigFilePath)
+$configXML = [xml](Get-Content $AdjustedConfigFilePath)
 $ConnectionString = $configXML.Settings.SchoolLogic.ConnectionString
+
 
 # Set up the SQL connection
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
