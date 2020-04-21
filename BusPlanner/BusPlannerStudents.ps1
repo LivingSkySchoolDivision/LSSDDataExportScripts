@@ -27,7 +27,12 @@ $SqlQuery = "SELECT
                 Location.cPostalCode as PostalCode,
                 UserStudent.cReserveName as ReserveName,
                 UserStudent.cReserveHouse as ReserveHouse,
-                '' as LandLocation,
+                CAST(
+                    CASE
+                        WHEN UserStudent.UF_1651 <> 0
+                            THEN CONCAT(UserStudent.UF_1651,'-',UserStudent.UF_2098,'-',UserStudent.UF_1653_1,'-',UserStudent.UF_1654_1,'-W',UserStudent.UF_2093)
+                    END AS varchar
+                ) as LandLocation,
                 UserStudent.UF_1651 as Quarter,
                 UserStudent.UF_2098 as Section,
                 UserStudent.UF_1653_1 as Township,
