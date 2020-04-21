@@ -17,7 +17,7 @@ $SqlQuery = "SELECT
                 Student.cLastName as LastName,
                 CONVERT (varchar,Student.dBirthdate,3) as BirthDate,
                 LV_GENDER.cCode as Gender,
-                Grades.cName as Grade, -- Need to remove the leading zero
+                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(Grades.cName)),'0k','k'),'09','9'),'08','8'),'07','7'),'06','6'),'05','5'),'04','4'),'03','3'),'02','2'),'01','1') as Grade,
                 Location.cPhone as Phone,
                 Location.cHouseNo as House,
                 Location.cStreet as Street,
@@ -50,22 +50,21 @@ $SqlQuery = "SELECT
                 '' as Contact2WorkPhone,
                 '' as Contact2CellPhone,
                 '' as Contact2Email
-
-            FROM 
-                StudentStatus
-                LEFT OUTER JOIN Student ON StudentStatus.iStudentID=Student.iStudentID
-                LEFT OUTER JOIN School ON Student.iSchoolID=School.iSchoolID
-                LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID
-                LEFT OUTER JOIN Location ON Student.iLocationID=Location.iLocationID
-                LEFT OUTER JOIN LookupValues AS LOC_CITY ON Location.iLV_CityID=LOC_CITY.iLookupValuesID
-                LEFT OUTER JOIN LookupValues AS LOC_PROV ON Location.iLV_RegionID=LOC_PROV.iLookupValuesID
-                LEFT OUTER JOIN Country ON Location.iCountryID=Country.iCountryID
-                LEFT OUTER JOIN LookupValues AS LV_GENDER ON Student.iLV_GenderID=LV_GENDER.iLookupValuesID
-                LEFT OUTER JOIN UserStudent ON Student.iStudentID=UserStudent.iStudentID
-            WHERE
-                (StudentStatus.dInDate <=  { fn CURDATE() }) AND
-                ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
-                (StudentStatus.lOutsideStatus = 0)
+                FROM 
+                    StudentStatus
+                    LEFT OUTER JOIN Student ON StudentStatus.iStudentID=Student.iStudentID
+                    LEFT OUTER JOIN School ON Student.iSchoolID=School.iSchoolID
+                    LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID
+                    LEFT OUTER JOIN Location ON Student.iLocationID=Location.iLocationID
+                    LEFT OUTER JOIN LookupValues AS LOC_CITY ON Location.iLV_CityID=LOC_CITY.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LOC_PROV ON Location.iLV_RegionID=LOC_PROV.iLookupValuesID
+                    LEFT OUTER JOIN Country ON Location.iCountryID=Country.iCountryID
+                    LEFT OUTER JOIN LookupValues AS LV_GENDER ON Student.iLV_GenderID=LV_GENDER.iLookupValuesID
+                    LEFT OUTER JOIN UserStudent ON Student.iStudentID=UserStudent.iStudentID
+                WHERE
+                    (StudentStatus.dInDate <=  { fn CURDATE() }) AND
+                    ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
+                    (StudentStatus.lOutsideStatus = 0)
                 ;"
 
 # CSV Delimeter
