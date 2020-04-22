@@ -7,12 +7,12 @@ param (
 # Script configuration                       #
 ##############################################
 
-$batchSize = 25
+$batchSize = 50
 
 # SQL Query to get the number of records we'll need
 
 $SqlQuery_Count = "SELECT
-                        CONCAT('STUDENT_',StudentPhoto.iStudentId)
+                        CONCAT('STUDENT-',StudentPhoto.iStudentId)
                     FROM 
                         StudentPhoto
                         LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
@@ -27,7 +27,7 @@ $SqlQuery_Count = "SELECT
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 
 $SqlQuery_Photos = "SELECT
-                StudentPhoto.iStudentId, 
+                CONCAT('STUDENT-',StudentPhoto.iStudentId), 
                 StudentPhoto.bImage, 
                 StudentPhoto.cImageType 
             FROM 
@@ -64,7 +64,6 @@ $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
 $SqlCommand.Connection = $SqlConnection
 $SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
 $SqlAdapter.SelectCommand = $SqlCommand
-$SqlDataSet = New-Object System.Data.DataSet
 
 # Create a temporary scratch folder to store all the images in
 $ScratchFolderPath = "$OutputFileName.tmp"
@@ -98,12 +97,15 @@ for ($x=0;$x -le $Count;$x+=$batchSize) {
     $Offset = $batchNumber * $batchSize
     $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $batchSize ROWS ONLY"
 
+    $perc = ($Offset / $Count) * 100
+    write-host "$Offset /  $Count ($perc %)"
+
     # Get this batch from SQL
     
     $SqlCommand.CommandText = $BatchSQL
     $SqlConnection.open()
     $PhotoDataSet = New-Object System.Data.DataSet
-    $SqlAdapter.Fill($PhotoDataSet)
+    $throwaway123 = $SqlAdapter.Fill($PhotoDataSet)
     $SqlConnection.close()
     
     # Write these to file

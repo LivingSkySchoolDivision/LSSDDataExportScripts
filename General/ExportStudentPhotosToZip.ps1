@@ -12,10 +12,11 @@ $batchSize = 25
 # SQL Query to get the number of records we'll need
 
 $SqlQuery_Count = "SELECT
-                        StudentPhoto.iStudentId
+                        Student.cStudentNumber
                     FROM 
                         StudentPhoto
                         LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
+                        LEFT OUTER JOIN Student ON StudentPhoto.iStudentId=Student.iStudentId
                     WHERE 
                         (StudentStatus.dInDate <=  { fn CURDATE() }) 
                         AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
@@ -27,18 +28,19 @@ $SqlQuery_Count = "SELECT
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 
 $SqlQuery_Photos = "SELECT
-                StudentPhoto.iStudentId, 
-                StudentPhoto.bImage, 
-                StudentPhoto.cImageType 
-            FROM 
-                StudentPhoto
-                LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
-            WHERE 
-                (StudentStatus.dInDate <=  { fn CURDATE() }) 
-                AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
-                AND (StudentStatus.lOutsideStatus = 0)
-            ORDER BY StudentPhoto.iStudentId 
-            "
+                        Student.cStudentNumber 
+                            StudentPhoto.bImage, 
+                            StudentPhoto.cImageType 
+                        FROM 
+                            StudentPhoto
+                            LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
+                            LEFT OUTER JOIN Student ON StudentPhoto.iStudentId=Student.iStudentId
+                        WHERE 
+                            (StudentStatus.dInDate <=  { fn CURDATE() }) 
+                            AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
+                            AND (StudentStatus.lOutsideStatus = 0)
+                        ORDER BY StudentPhoto.iStudentId 
+                        "
 
 ##############################################
 # No configurable settings beyond this point #
@@ -64,7 +66,6 @@ $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
 $SqlCommand.Connection = $SqlConnection
 $SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
 $SqlAdapter.SelectCommand = $SqlCommand
-$SqlDataSet = New-Object System.Data.DataSet
 
 # Create a temporary scratch folder to store all the images in
 $ScratchFolderPath = "$OutputFileName.tmp"
@@ -98,12 +99,15 @@ for ($x=0;$x -le $Count;$x+=$batchSize) {
     $Offset = $batchNumber * $batchSize
     $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $batchSize ROWS ONLY"
 
+    $perc = $Count / $Offset
+    write-host "$Offset /  $Count ($perc %)"
+
     # Get this batch from SQL
     
     $SqlCommand.CommandText = $BatchSQL
     $SqlConnection.open()
     $PhotoDataSet = New-Object System.Data.DataSet
-    $SqlAdapter.Fill($PhotoDataSet)
+    $throwaway123 = $SqlAdapter.Fill($PhotoDataSet)
     $SqlConnection.close()
     
     # Write these to file
