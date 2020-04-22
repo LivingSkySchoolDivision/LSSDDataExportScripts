@@ -12,7 +12,7 @@ $batchSize = 25
 # SQL Query to get the number of records we'll need
 
 $SqlQuery_Count = "SELECT
-                        CONCAT('STUDENT_',StudentPhoto.iStudentId)
+                        StudentPhoto.iStudentId
                     FROM 
                         StudentPhoto
                         LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
