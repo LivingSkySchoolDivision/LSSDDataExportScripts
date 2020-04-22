@@ -1,21 +1,21 @@
 param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
-    [string]$ConfigFilePath
+    [string]$ConfigFilePath,
+    [int]$BatchSize = 50
  )
 
 ##############################################
 # Script configuration                       #
 ##############################################
 
-$batchSize = 50
-
 # SQL Query to get the number of records we'll need
 
 $SqlQuery_Count = "SELECT
-                        CONCAT('STUDENT-',StudentPhoto.iStudentId)
+                        Student.cStudentNumber
                     FROM 
                         StudentPhoto
                         LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
+                        LEFT OUTER JOIN Student ON StudentPhoto.iStudentId=Student.iStudentId
                     WHERE 
                         (StudentStatus.dInDate <=  { fn CURDATE() }) 
                         AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
@@ -27,18 +27,19 @@ $SqlQuery_Count = "SELECT
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 
 $SqlQuery_Photos = "SELECT
-                CONCAT('STUDENT-',StudentPhoto.iStudentId), 
-                StudentPhoto.bImage, 
-                StudentPhoto.cImageType 
-            FROM 
-                StudentPhoto
-                LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
-            WHERE 
-                (StudentStatus.dInDate <=  { fn CURDATE() }) 
-                AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
-                AND (StudentStatus.lOutsideStatus = 0)
-            ORDER BY StudentPhoto.iStudentId 
-            "
+                            CONCAT('STUDENT-',Student.cStudentNumber), 
+                            StudentPhoto.bImage, 
+                            StudentPhoto.cImageType 
+                        FROM 
+                            StudentPhoto
+                            LEFT OUTER JOIN StudentStatus ON StudentPhoto.iStudentID=StudentStatus.iStudentID
+                            LEFT OUTER JOIN Student ON StudentPhoto.iStudentId=Student.iStudentId
+                        WHERE 
+                            (StudentStatus.dInDate <=  { fn CURDATE() }) 
+                            AND ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
+                            AND (StudentStatus.lOutsideStatus = 0)
+                        ORDER BY StudentPhoto.iStudentId 
+                        "
 
 ##############################################
 # No configurable settings beyond this point #
@@ -93,12 +94,11 @@ $SqlConnection.close()
 
 # Run the SQL query for the photos in batches
 $batchNumber = 0
-for ($x=0;$x -le $Count;$x+=$batchSize) {
-    $Offset = $batchNumber * $batchSize
-    $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $batchSize ROWS ONLY"
+for ($x=0;$x -le $Count;$x+=$BatchSize) {
+    $Offset = $batchNumber * $BatchSize
+    $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $BatchSize ROWS ONLY"
 
-    $perc = ($Offset / $Count) * 100
-    write-host "$Offset /  $Count ($perc %)"
+    write-host "$Offset /  $Count"
 
     # Get this batch from SQL
     

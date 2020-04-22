@@ -34,6 +34,14 @@ Paths are supported.
 
 Defaults to `config.xml` in the folder *above* the folder the script is stored in.
 
+## Special arguments for ExportStudentPhotosToZip.ps1 and EdsbyGUIDPhotosZip.ps1
+```
+-BatchSize <num>
+```
+Photos must be queried from the database in batches, or the script will timeout trying to download them all at once. Larger batches may finish quicker, but may time-out in the middle of an executing script if your images are too large.
+
+Default batch size is 50. Accepts any number.
+
 # Configuration file
 
 The scripts in this repository require a database connection string in order to communicate with your database server.
@@ -61,3 +69,4 @@ Some scripts may require additional connection strings, as they may need to comm
 If you require assistance figuring out what connection string you need, the following third-party sites may help you:
 * https://www.connectionstrings.com/
 * https://docs.microsoft.com/en-us/previous-versions/windows/desktop/ms722656(v=vs.85)
+

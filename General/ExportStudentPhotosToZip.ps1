@@ -1,13 +1,13 @@
 param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
-    [string]$ConfigFilePath
+    [string]$ConfigFilePath,
+    [int]$BatchSize = 50
+
  )
 
 ##############################################
 # Script configuration                       #
 ##############################################
-
-$batchSize = 25
 
 # SQL Query to get the number of records we'll need
 
@@ -28,7 +28,7 @@ $SqlQuery_Count = "SELECT
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 
 $SqlQuery_Photos = "SELECT
-                        Student.cStudentNumber 
+                            Student.cStudentNumber,
                             StudentPhoto.bImage, 
                             StudentPhoto.cImageType 
                         FROM 
@@ -95,12 +95,11 @@ $SqlConnection.close()
 
 # Run the SQL query for the photos in batches
 $batchNumber = 0
-for ($x=0;$x -le $Count;$x+=$batchSize) {
-    $Offset = $batchNumber * $batchSize
-    $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $batchSize ROWS ONLY"
+for ($x=0;$x -le $Count;$x+=$BatchSize) {
+    $Offset = $batchNumber * $BatchSize
+    $BatchSQL = "$SqlQuery_Photos OFFSET $Offset ROWS FETCH NEXT $BatchSize ROWS ONLY"
 
-    $perc = $Count / $Offset
-    write-host "$Offset /  $Count ($perc %)"
+    write-host "$Offset /  $Count"
 
     # Get this batch from SQL
     
