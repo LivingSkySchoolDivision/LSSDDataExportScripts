@@ -19,6 +19,7 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN UserStaff US ON CR.iStaffID = US.iStaffID
                 LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
+            WHERE C.iSchoolID NOT IN (5851066)
             ORDER BY C.iSchoolID, CR.iStaffID"
 
 # CSV Delimeter
