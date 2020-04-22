@@ -12,8 +12,8 @@ param (
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT 
                 Enrollment.iSchoolID as SchoolID,
-                Enrollment.iClassID as SectionGUID,
-                Enrollment.iStudentID as StudentGUID
+                CONCAT(Enrollment.iSchoolID,'-',Enrollment.iClassID) as SectionGUID,
+                CONCAT('STUDENT-',Enrollment.iStudentID) as StudentGUID
             FROM
                 Enrollment
             WHERE
