@@ -23,7 +23,7 @@ $SqlQuery = "SELECT
             ORDER BY iRoomID;"
 
 # CSV Delimeter
-# Some systems expect this to be a tab "\t" or a pipe "|".
+# Some systems expect this to be a tab "`t" or a pipe "|".
 $Delimeter = ','
 
 # Should all columns be quoted, or just those that contains characters to escape?

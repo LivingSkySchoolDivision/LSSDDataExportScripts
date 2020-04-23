@@ -13,6 +13,7 @@ param (
 
 ##### IMPORTANT
 # If you modify this query, the post-processing code below may need to be modified as well.
+##### IMPORTANT
 $SqlQuery = "SELECT 
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
@@ -20,8 +21,8 @@ $SqlQuery = "SELECT
                 C.cSection AS SubSection,
                 TE.iTermID AS TermID,
                 CO.cGovernmentCode AS CourseID,
-                CONCAT('STAFF-', C.iDefault_StaffID) AS TeacherGUID,
-                CR.iRoomID AS RoomID,
+                '' AS TeacherGUID,
+                CR.iRoomID RoomID,
                 '' AS GradeLevel,
                 CO.cName AS Subject,
                 CO.iCourseID AS CourseCode,
@@ -29,8 +30,8 @@ $SqlQuery = "SELECT
                 CASE WHEN T.lDaily = 1 THEN 0 ELSE 1 END AS Attendance,
                 CASE WHEN T.lDaily = 1 THEN 4 ELSE 0 END AS ScheduleMode,
                 CS.iClassScheduleID AS ScheduleID,
-                LOW.cName AS LOWGRADE,
-                HIGH.cName AS HIGHGRADE
+                LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
+                LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
             FROM Class C
                 LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
@@ -43,7 +44,7 @@ $SqlQuery = "SELECT
                 ;"
 
 # CSV Delimeter
-# Some systems expect this to be a tab "\t" or a pipe "|".
+# Some systems expect this to be a tab "`t" or a pipe "|".
 $Delimeter = ','
 
 # Should all columns be quoted, or just those that contains characters to escape?
@@ -165,6 +166,8 @@ foreach($DSTable in $SqlDataSet.Tables) {
         $DataRow["LOWGRADE"] = ""
         $DataRow["HIGHGRADE"] = ""
     }
+    $DSTable.Columns.Remove("LOWGRADE")
+    $DSTable.Columns.Remove("HIGHGRADE")
 }
 
 # Output to a CSV file
