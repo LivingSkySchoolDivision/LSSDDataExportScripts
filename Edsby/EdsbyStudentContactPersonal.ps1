@@ -14,12 +14,12 @@ $SqlQuery = "SELECT
                 CONCAT('CONTACT-', C.iContactID) AS ContactGUID,
                 C.cFirstName AS FirstName,
                 C.cLastName AS LastName,
-                CONCAT('STUDENT-',S.iStudentID) AS StudentGUID,
-                LV.cName AS Relation,
-                CASE WHEN(CR.lMail=1) THEN 'Yes' ELSE 'No' END AS AccessToRecords,
-                S.iSchoolID AS SchoolID,
+                '' AS StudentGUID,
+                '' AS Relation,
+                '' AS AccessToRecords,
+                C.iSchoolID AS SchoolID,
                 C.mEmail AS Email,
-                CR.iContactPriority AS ContactSequence,
+                '' AS ContactSequence,
                 PR.cName AS Prefix,
                 '' AS MiddleName,
                 '' AS Suffix,
@@ -36,18 +36,27 @@ $SqlQuery = "SELECT
                 '' as UserID,
                 '' AS Password, 
                 'F' AS IntegrationAuth
-            FROM Student S
-                LEFT OUTER JOIN ContactRelation CR ON S.iStudentID = CR.iStudentID
-                LEFT OUTER JOIN Contact C ON CR.iContactID = C.iContactID
-                LEFT OUTER JOIN LookupValues LV ON CR.iLV_RelationID = LV.iLookupValuesID
+            FROM 
+                Contact C
                 LEFT OUTER JOIN LookupValues PR ON C.iLV_TitleID = PR.iLookupValuesID 
                 LEFT OUTER JOIN ContactAddress CA oN C.iContactID = CA.iContactID 
                 LEFT OUTER JOIN Location L ON CA.iLocationID = L.iLocationID 
                 LEFT OUTER JOIN LookupValues CITY ON L.iLV_CityID = CITY.iLookupValuesID
                 LEFT OUTER JOIN LookupValues PROV ON L.iLV_RegionID = PROV.iLookupValuesID
                 LEFT OUTER JOIN Country ON L.iCountryID = Country.iCountryID
-            WHERE CA.lMailTo = 1
-            ORDER BY C.iContactID;"
+            WHERE 
+                C.iContactID IN (
+                    SELECT 
+                        DISTINCT(ContactRelation.iContactID) 
+                    FROM 
+                        StudentStatus 
+                        LEFT OUTER JOIN ContactRelation ON StudentStatus.iStudentID=ContactRelation.iStudentID
+                    WHERE 
+                        (StudentStatus.dInDate <=  { fn CURDATE() }) AND
+                        ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
+                        (StudentStatus.lOutsideStatus = 0))
+                ORDER BY C.iContactID;
+                ;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
