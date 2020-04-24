@@ -13,7 +13,7 @@ param (
 $SqlQuery = "SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CS.iClassScheduleID AS ScheduleID,
-                B.iBlocksID AS BSID,
+                CONCAT(T.iTrackID,D.iDaysID,B.IBlocksID) AS BSID,
                 B.IBlocksID AS PeriodID,
                 B.cName AS PeriodName,
                 FORMAT(B.tStartTime,'HH:mm') AS stime,
