@@ -14,7 +14,7 @@ $SqlQuery = "SELECT
                 CONCAT('STUDENT-',S.iStudentID) AS StudentGUID, 
                 cLegalFirstName AS FirstName, 
                 cLegalLAStName AS LaStName, 
-                S.iSchoolID AS SchoolID, 
+                '' AS SchoolID, 
                 cStudentNumber AS SID, 
                 cGovernmentNumber AS MinistryID, 
                 LEFT(LV.cName,1) AS Gender, 
