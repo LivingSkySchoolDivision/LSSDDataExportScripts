@@ -33,6 +33,48 @@ $SqlQuery = "SELECT
                 AND Employee.[Company E-Mail] IS NOT NULL
                 AND Employee.[Company E-Mail] <> '';"
 
+# DANs for facilities, since these aren't in Navision
+# These are the provincial assigned codes, retreived from
+# the schoollogic database (mostly)
+$SchoolDANs = @{
+    #'0001'='DEFAULT_DISTRICT_OFFICE'; # Division Based
+    '0002'='DEFAULT_DISTRICT_OFFICE'; # Central Office
+    '0004'='DEFAULT_DISTRICT_OFFICE'; # Bus Ops
+    '0006'='DEFAULT_DISTRICT_OFFICE'; # Facilities Maintenance
+    '0011'='DEFAULT_DISTRICT_OFFICE'; # All Schools
+    '0012'='5810211'; # BCS
+    '0014'='5850201'; # Bready
+    '0016'='5850401'; # Connaught
+    '0018'='5910111'; # CKES
+    '0020'='6410721'; # HCES
+    '0022'='5850501'; # Lawrence
+    '0024'='5850601'; # McKitrick
+    '0028'='5810221'; # STVital
+    '0030'='5910711'; # UPS
+    '0032'='5910911'; # NCES
+    '0034'='5910123'; # CKCS
+    '0036'='6410713'; # SHS
+    '0038'='5910813'; # UCHS
+    '0040'='5910923'; # McLurg
+    '0042'='5850904'; # NBCHS
+    '0044'='5010213'; # Cando
+    '0048'='5710213'; # Hafford
+    '0050'='4410223'; # Kerrobert
+    '0052'='6410313'; # Leoville
+    '0054'='4410323'; # Luseland
+    '0056'='4410413'; # Macklin
+    '0060'='5810713'; # Maymont
+    '0062'='6410513'; # Medstead
+    '0066'='5894003'; # Heritage
+    '0067'='6694003'; # MLCA 
+    '0072'='5910313'; # Hillsvale
+    '0074'='5911011'; # Lakeview
+    '0076'='5911113'; # Scott
+    '0516'='5850401'; # Connaught
+    '0616'='5850401'; # Connaught
+    '0624'='5850601'; # McKitrick
+}
+
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
 $Delimeter = ','
@@ -72,6 +114,25 @@ $SqlDataSet = New-Object System.Data.DataSet
 $SqlConnection.open()
 $SqlAdapter.Fill($SqlDataSet)
 $SqlConnection.close()
+
+# Post processing
+# Convert the NAV facility codes to school DAN numbers
+# and toss out any that don't match the hashtable above
+
+foreach($DSTable in $SqlDataSet.Tables) {    
+    $RowsToRemove = @()
+    foreach($DataRow in $DSTable) {
+        if ($SchoolDANs.ContainsKey($DataRow["School_id"]) -eq $false) {
+            $RowsToRemove += $DataRow
+        } else {
+            $DataRow["School_id"] = $SchoolDANs[$DataRow["School_id"]]
+        }
+    }
+
+    foreach($Row in $RowsToRemove) {
+        $DSTable.Rows.Remove($Row)
+    }
+}
 
 # Output to a CSV file
 foreach($DSTable in $SqlDataSet.Tables) {
