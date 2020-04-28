@@ -29,7 +29,7 @@ $SqlQuery = "SELECT
                 LTRIM(RTRIM(EMAIL.mInfo)) AS Email,
                 S.EdsbyGradeLevels AS GradeLevel,
                 'America/Regina' AS TimeZone,
-                STA.iStaffID AS PrincipalGUID
+                CONCAT('STAFF-',STA.iStaffID) AS PrincipalGUID
             FROM School S
                 LEFT OUTER JOIN SchoolCommunication SC ON S.iSchoolID = SC.iSchoolID AND SC.iLV_CommunicationTypeID = 3576
                 LEFT OUTER JOIN SchoolCommunication FAX ON S.iSchoolID = FAX.iSchoolID AND FAX.iLV_CommunicationTypeID = 4700	
