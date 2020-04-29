@@ -14,20 +14,38 @@ $SqlQuery = "SELECT DISTINCT
                 S.iSchoolID AS SchoolID,
                 T.iTrackID AS ScheduleID,
                 CASE WHEN 
-                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) OR CAL.iBlockTime <> 0 THEN 'ALT' ELSE 'REG' END
+                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) OR CAL.iBlockTime = 1 THEN 'ALT' ELSE 'REG' END
                 AS BSID,
-                B.IBlocksID AS PeriodID,
-                B.cName AS PeriodName,
-                FORMAT(B.tStartTime,'HH:mm') AS stime,
-                FORMAT(B.tEndTime,'HH:mm') AS etime
+                CASE WHEN
+                    B.IBlocksID IS NULL THEN AB.iAttendanceBlocksID ELSE B.IBlocksID END 
+                AS PeriodID,
+                CASE WHEN
+                    B.IBlocksID IS NULL THEN AB.cName ELSE B.cName END
+                AS PeriodName,
+                CASE WHEN 
+                    B.IBlocksID IS NULL THEN 
+                        CASE WHEN 
+                            CAL.iBlockTime = 1 THEN FORMAT(AB.tStartTime1,'HH:mm') ELSE FORMAT(AB.tStartTime,'HH:mm') END
+                    ELSE 
+                        CASE WHEN 
+                            CAL.iBlockTime = 1 THEN FORMAT(B.tStartTime1,'HH:mm') ELSE FORMAT(B.tStartTime,'HH:mm') END 
+                END AS stime,
+                CASE WHEN B.IBlocksID IS NULL THEN
+                        CASE WHEN 
+                            CAL.iBlockTime = 1 THEN FORMAT(AB.tEndTime1,'HH:mm') ELSE FORMAT(AB.tEndTime,'HH:mm') END
+                    ELSE 
+                        CASE WHEN 
+                            CAL.iBlockTime = 1 THEN FORMAT(B.tEndTime1,'HH:mm') ELSE FORMAT(B.tEndTime,'HH:mm') END 
+                END AS etime
             FROM School S
                 INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
                 INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
-                INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
+                LEFT OUTER JOIN Blocks B ON T.iTrackID = B.iTrackID
+                LEFT OUTER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
                 INNER JOIN Days D ON T.iTrackID = D.iTrackID
                 INNER JOIN Calendar CAL ON T.iTrackID = CAL.iTrackID
             WHERE T.cName NOT LIKE 'NYR%' AND CAL.cDayNumber != 'N' 
-            ORDER BY S.iSchoolID, T.iTrackID, B.IBlocksID;"
+            ORDER BY S.iSchoolID, T.iTrackID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
