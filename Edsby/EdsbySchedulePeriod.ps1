@@ -11,21 +11,23 @@ param (
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT DISTINCT
-                C.iSchoolID AS SchoolID,
-                CS.iClassScheduleID AS ScheduleID,
-                CONCAT(T.iTrackID,D.iDaysID,B.IBlocksID) AS BSID,
+                S.iSchoolID AS SchoolID,
+                T.iTrackID AS ScheduleID,
+                CASE WHEN 
+                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) THEN 'ALT' ELSE 'REG' END
+                AS BSID,
                 B.IBlocksID AS PeriodID,
                 B.cName AS PeriodName,
                 FORMAT(B.tStartTime,'HH:mm') AS stime,
                 FORMAT(B.tEndTime,'HH:mm') AS etime
-            FROM ClassSchedule CS
-                INNER JOIN ClassResource CR ON CS.iClassResourceID = CR.iClassResourceID 
-                INNER JOIN ClassTerm CT ON CS.iTermID = CT.iTermID AND CR.iClassID = CT.iClassID
-                INNER JOIN Class C ON CR.iClassID = C.iClassID
-                INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN Blocks B ON CS.iBlockNumber = B.iBlockNumber AND C.iTrackID = B.iTrackID
-                INNER JOIN Days D ON CS.iDayNumber = D.iDayNumber AND C.iTrackID = D.iTrackID
-            ORDER BY C.iSchoolID, B.IBlocksID;"
+            FROM School S
+                INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
+                INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
+                INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
+                INNER JOIN Days D ON T.iTrackID = D.iTrackID
+                INNER JOIN Calendar CAL ON T.iTrackID = CAL.iTrackID
+            WHERE T.cName NOT LIKE 'NYR%' AND CAL.cDayNumber != 'N' 
+            ORDER BY S.iSchoolID, T.iTrackID, B.IBlocksID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
