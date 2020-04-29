@@ -10,22 +10,23 @@ param (
 # SQL Query to run
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
-$SqlQuery = "SELECT 
-                C.iSchoolID AS SchoolID,
-                CS.iClassScheduleID AS ScheduleID,
-                CAL.dDate AS CalendarDate,
-                CS.iTermID AS TermID,
+$SqlQuery = "SELECT DISTINCT
+                S.iSchoolID AS SchoolID,
+                T.iTrackID AS ScheduleID,
+                FORMAT(CAL.dDate, 'yyyy-MM-dd') AS CalendarDate,
+                TE.iTermID AS TermID,
                 D.iDaysID AS DayID,
-                CONCAT(T.iTrackID,D.iDaysID,B.IBlocksID) AS BSID,
+                CASE WHEN 
+                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) THEN 'ALT' ELSE 'REG' END
+                AS BSID,
                 D.cName AS DayName
-            FROM CLASS C
-                INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
-                INNER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
-                INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN Blocks B ON CS.iBlockNumber = B.iBlockNumber AND C.iTrackID = B.iTrackID
-                INNER JOIN DAYS D ON T.iTrackID = D.iTrackID AND CS.iDayNumber = D.iDayNumber
-                INNER JOIN Calendar CAL ON C.iTrackID = CAL.iTrackID AND CS.iDayNumber = CONVERT(INT,LTRIM(RTRIM(CAL.cDayNumber)))
-            WHERE CAL.cDayNumber != 'N' AND CAL.cDayNumber != '';"
+            FROM School S
+                INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
+                INNER JOIN TERM TE ON T.iTrackID = TE.iTrackID
+                INNER JOIN DAYS D ON T.iTrackID = D.iTrackID
+                INNER JOIN Calendar CAL ON T.iTrackID = CAL.iTrackID AND D.iDayNumber = CAL.cDayNumber AND CAL.dDate >= TE.dStartDate AND CAL.dDate <= TE.dEndDate
+            WHERE T.cName NOT LIKE 'NYR%' AND CAL.cDayNumber != 'N' 
+            ORDER BY S.iSchoolId, T.iTrackID, TE.iTermID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
