@@ -17,7 +17,7 @@ $SqlQuery = "SELECT DISTINCT
                 TE.iTermID AS TermID,
                 D.iDaysID AS DayID,
                 CASE WHEN 
-                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) THEN 'ALT' ELSE 'REG' END
+                    CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) OR CAL.iBlockTime <> 0 THEN 'ALT' ELSE 'REG' END
                 AS BSID,
                 D.cName AS DayName
             FROM School S
