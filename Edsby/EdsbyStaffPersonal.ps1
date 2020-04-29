@@ -11,10 +11,12 @@ param (
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT 
-                CONCAT('STAFF-',s.iStaffID) as StaffGUID, 
+                CASE WHEN
+                    us.iBaseStaffIDid <> 0 THEN CONCAT('STAFF-', us.iBaseStaffIDid) ELSE CONCAT('STAFF-',s.iStaffID) 
+                END AS StaffGUID, 
                 cFirstName as FirstName, 
                 cLastName as LastName, 
-                '' AS SchoolID, 
+                s.iSchoolID AS SchoolID, 
                 '' as Prefix, 
                 '' as Title, 
                 '' as StaffType, 
@@ -30,11 +32,12 @@ $SqlQuery = "SELECT
                 s.mEmail as Email, 
                 '' as Telephone, 
                 '' as Gender, 
-                us.dBirthDate as Birthday, 
-                s.cUserName as UserID, 
+                FORMAT(us.dBirthDate, 'yyyy-MM-dd') as Birthday, 
+                CASE WHEN
+                    us.iBaseStaffIDid <> 0 THEN LEFT(s.mEmail, CHARINDEX('@',s.mEmail)-1) ELSE s.cUserName 
+                END AS UserID, 
                 '' as Password, 
-                'T' as IntegrationAuth, 
-                'T' as NoSync  
+                'T' as IntegrationAuth 
             FROM Staff s
                 INNER JOIN UserStaff us ON s.iStaffID = us.iStaffID
                 LEFT OUTER JOIN LookupValues title ON us.iEdsbyRoleid = title.iLookupValuesID
@@ -42,8 +45,20 @@ $SqlQuery = "SELECT
                 s.iSchoolID NOT IN (5850953,5850963,5850964,5851066) 
                 AND cLastName NOT LIKE 'ADMIN%' 
                 AND cLastName NOT LIKE '%SubSec%' 
+                AND cLastName NOT LIKE '%SubSso%'
                 AND cLastName NOT LIKE '%egov%' 
-                AND s.iStaffID NOT IN (268,43,1482,1528,1532,1614,1475)
+                AND s.iStaffID NOT IN 
+                    (
+                    43,--Karleen Graff
+                    268, --Carrie Day
+                    1457, --Colleen Fouhy
+                    1475, --Raeleen Secretary
+                    1482, --SRB Remote
+                    1528, --Shannon Lessard
+                    1532, --Douglas Drover
+                    1614, --Kelsey Secretary
+                    1938  --Terry Korpach
+                    )
             ORDER BY s.iStaffID;"
 
 # CSV Delimeter
