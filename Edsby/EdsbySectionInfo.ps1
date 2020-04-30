@@ -14,7 +14,7 @@ param (
 ##### IMPORTANT
 # If you modify this query, the post-processing code below may need to be modified as well.
 ##### IMPORTANT
-$SqlQuery = "SELECT 
+$SqlQuery = "SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
                 LEFT(C.iClassID, 3) + RIGHT(C.iClassID, 2) AS SectionID,
@@ -24,23 +24,23 @@ $SqlQuery = "SELECT
                 '' AS TeacherGUID,
                 CR.iRoomID RoomID,
                 '' AS GradeLevel,
-                CO.cName AS Subject,
+                SUB.cName AS Subject,
                 CO.iCourseID AS CourseCode,
                 CO.cName AS CourseTitle,
                 CASE WHEN T.lDaily = 1 THEN 0 ELSE 1 END AS Attendance,
                 CASE WHEN T.lDaily = 1 THEN 4 ELSE 0 END AS ScheduleMode,
-                CS.iClassScheduleID AS ScheduleID,
+                T.iTrackID AS ScheduleID,
                 LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
             FROM Class C
-                LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
-                LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
-                LEFT OUTER JOIN Grades LOW ON C.iLow_GradesID = LOW.iGradesID
-                LEFT OUTER JOIN Grades HIGH ON C.iHigh_GradesID = HIGH.iGradesID
-                LEFT OUTER JOIN Course CO ON C.iCourseID = CO.iCourseID
-                LEFT OUTER JOIN Track T ON C.iTrackID = T.iTrackID
-                LEFT OUTER JOIN TERM TE ON T.iTrackID = TE.iTrackID
-            ORDER BY C.iSchoolID, C.iClassID
+                INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
+                INNER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
+                INNER JOIN Grades LOW ON C.iLow_GradesID = LOW.iGradesID
+                INNER JOIN Grades HIGH ON C.iHigh_GradesID = HIGH.iGradesID
+                INNER JOIN Course CO ON C.iCourseID = CO.iCourseID
+                LEFT OUTER JOIN LookupValues SUB ON CO.iLV_SubjectID = SUB.iLookupValuesID
+                INNER JOIN Track T ON C.iTrackID = T.iTrackID
+                INNER JOIN TERM TE ON T.iTrackID = TE.iTrackID AND CS.iTermID = TE.iTermID
                 ;"
 
 # CSV Delimeter
