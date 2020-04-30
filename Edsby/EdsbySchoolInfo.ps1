@@ -15,7 +15,7 @@ $SqlQuery = "SELECT
                 LTRIM(RTRIM(S.cName)) AS SchoolName,
                 LTRIM(RTRIM(ST.cName)) AS SchoolType,
                 'Regular' AS SchoolFocus,
-                LTRIM(RTRIM(S.cCode)) AS DistrictID,
+                '' AS DistrictID,
                 LTRIM(RTRIM(URL.mInfo)) AS SchoolURL,
                 CASE WHEN L.cHouseNo !='' THEN LTRIM(RTRIM(CONCAT(L.cHouseNo, ' ', L.cStreet)))
                 ELSE LTRIM(RTRIM(L.cStreet)) END AS StreetAddress,
