@@ -33,8 +33,6 @@ $SqlQuery = "SELECT
                 CASE WHEN C.mCellPhone >'' THEN '1-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.mCellPhone), '(',''),')',''),'-',''),' ',''),1,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.mCellPhone), '(',''),')',''),'-',''),' ',''),4,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.mCellPhone), '(',''),')',''),'-',''),' ',''),7,4) ELSE '' END AS MobilePhone, 
                 CASE WHEN C.cBusPhone >'' THEN '1-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.cBusPhone), '(',''),')',''),'-',''),' ',''),1,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.cBusPhone), '(',''),')',''),'-',''),' ',''),4,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((C.cBusPhone), '(',''),')',''),'-',''),' ',''),7,4) ELSE '' END AS WorkPhone, 
                 '' AS FaxNumber,
-                '' as UserID,
-                '' AS Password, 
                 'F' AS IntegrationAuth
             FROM 
                 Contact C
@@ -55,8 +53,7 @@ $SqlQuery = "SELECT
                         (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                         ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                         (StudentStatus.lOutsideStatus = 0))
-                ORDER BY C.iContactID;
-                ;"
+                ORDER BY C.iContactID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
