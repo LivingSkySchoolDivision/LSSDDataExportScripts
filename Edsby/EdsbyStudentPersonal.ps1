@@ -14,19 +14,29 @@ $SqlQuery = "SELECT
                 CONCAT('STUDENT-',S.iStudentID) AS StudentGUID, 
                 cLegalFirstName AS FirstName, 
                 cLegalLAStName AS LaStName, 
-                '' AS SchoolID, 
+                S.iSchoolID AS SchoolID, 
                 cStudentNumber AS SID, 
                 cGovernmentNumber AS MinistryID, 
                 LEFT(LV.cName,1) AS Gender, 
-                CONCAT('STAFF-', HR.i1_StaffID) AS HomeRoomStaffGUID, 
+                CASE WHEN
+                    HR.i1_StaffID <> '' THEN CONCAT('STAFF-', HR.i1_StaffID) ELSE '' 
+                END AS HomeRoomStaffGUID, 
                 '' AS Prefix, 
                 cMiddlename AS MiddleName, 
                 cLegalSuffix AS Suffix, 
                 cFirstName AS PreferredName, 
                 replace(replace(concat(l.cHouseNo, ' ', l.cStreet), char(10), ''), char(13), '') AS StreetAddress, 
                 city.cName AS City, 
-                prov.cName AS StateProvince, 
-                country.cName AS Country, 
+                CASE WHEN
+                    prov.cName IS NULL THEN 'SK' ELSE 
+                    CASE WHEN prov.cName = 'Saskatchewan' THEN 'SK' ELSE 
+                    CASE WHEN prov.cName = 'Alberta' THEN 'AB' ELSE 
+                    CASE WHEN prov.cName = 'Manitoba' THEN 'MB' ELSE prov.cName 
+                    END	END END
+                END AS StateProvince, 
+                CASE WHEN
+                    country.cName IS NULL THEN 'Canada' ELSE country.cName 
+                END AS Country, 
                 l.cPostalCode AS PostalCode, 
                 s.mEmail AS Email, 
                 CASE WHEN S.mCellPhone >'' THEN '1-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((s.mCellPhone), '(',''),')',''),'-',''),' ',''),1,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((s.mCellPhone), '(',''),')',''),'-',''),' ',''),4,3)+'-'+SUBSTRING(REPLACE(REPLACE(REPLACE(REPLACE((s.mCellPhone), '(',''),')',''),'-',''),' ',''),7,4) ELSE '' END AS Telephone, 
@@ -46,8 +56,7 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
             WHERE 
                 (SS.dInDate <=  { fn CURDATE() }) AND
-                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))  AND 
-                (SS.lOutsideStatus = 0)
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
             ORDER BY S.iStudentID;"
 
 # CSV Delimeter
