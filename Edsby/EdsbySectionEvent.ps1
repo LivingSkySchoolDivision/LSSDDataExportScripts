@@ -10,23 +10,25 @@ param (
 # SQL Query to run
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
-$SqlQuery = "SELECT
+$SqlQuery = "SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
                 CS.iDayNumber AS DayID,
-                CASE WHEN CR.iRoomID = 0 THEN NULL ELSE CR.iRoomID END AS RoomID,
-                CS.iClassScheduleID AS ScheduleID,
+                CASE WHEN CR.iRoomID = 0 THEN NULL ELSE R.iRoomID END AS RoomID,
+                T.iTrackID AS ScheduleID,
                 CS.iTermID AS TermID,
                 CS.iBlockNumber AS PeriodID,
                 CASE WHEN T.lDaily = 1 THEN 'F' ELSE 'T' END AS TakeAttendance,
                 '' AS TeacherGUID
             FROM Class C
-                LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
+                INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
+                LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
-                LEFT OUTER JOIN UserStaff US ON CR.iStaffID = US.iStaffID
-                LEFT OUTER JOIN Track T ON C.iTrackID = T.iTrackID
-            WHERE C.iSchoolID NOT IN (5851066)
-            ORDER BY C.iSchoolID, CR.iStaffID;"
+                INNER JOIN Track T ON C.iTrackID = T.iTrackID
+            WHERE 
+                C.iSchoolID NOT IN (5851066)
+            ORDER BY 
+                CONCAT(C.iSchoolID,'-',C.iClassID);"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
