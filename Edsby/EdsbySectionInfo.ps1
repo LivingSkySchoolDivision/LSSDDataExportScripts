@@ -34,16 +34,16 @@ $SqlQuery = "SELECT DISTINCT
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
             FROM Class C
                 INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
-                INNER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
+                LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 INNER JOIN Grades LOW ON C.iLow_GradesID = LOW.iGradesID
                 INNER JOIN Grades HIGH ON C.iHigh_GradesID = HIGH.iGradesID
                 INNER JOIN Course CO ON C.iCourseID = CO.iCourseID
                 LEFT OUTER JOIN LookupValues SUB ON CO.iLV_SubjectID = SUB.iLookupValuesID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN TERM TE ON T.iTrackID = TE.iTrackID AND CS.iTermID = TE.iTermID
+                LEFT OUTER JOIN TERM TE ON T.iTrackID = TE.iTrackID AND CS.iTermID = TE.iTermID
             ORDER BY
-				CONCAT(C.iSchoolID,'-',C.iClassID);"
+                CONCAT(C.iSchoolID,'-',C.iClassID);"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
