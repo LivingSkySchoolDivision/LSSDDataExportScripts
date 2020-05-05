@@ -13,7 +13,7 @@ param (
 $SqlQuery = "SELECT 
                 CONCAT('STUDENT-',S.iStudentID) AS StudentGUID, 
                 cLegalFirstName AS FirstName, 
-                cLegalLAStName AS LaStName, 
+                cLegalLAStName AS LastName, 
                 SS.iSchoolID AS SchoolID, 
                 cStudentNumber AS SID, 
                 cGovernmentNumber AS MinistryID, 
