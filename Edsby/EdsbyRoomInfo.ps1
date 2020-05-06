@@ -19,8 +19,12 @@ $SqlQuery = "SELECT
                 '' as Size, 
                 iMaxCapacity as Capacity, 
                 '' as Telephone
-            FROM Room 
-            ORDER BY iRoomID;"
+            FROM 
+                Room 
+            WHERE 
+                iSchoolID NOT IN (5850953,5850963,5850964,5851066) 
+            ORDER BY 
+                iRoomID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
