@@ -13,12 +13,14 @@ param (
 $SqlQuery = "SELECT 
                 T.iSchoolID AS SchoolID, 
                 (FORMAT(TE.dEndDate, 'yy') -1) AS SchoolYear, 
-                TE.iTermID AS TermID, TE.cName AS Title, 
+                TE.iTermID AS TermID, 
+                REPLACE(TE.cName, 'SEMESTER', 'Sem') AS Title, 
                 FORMAT(TE.dStartDate, 'yyyy-MM-dd') as Start, 
                 FORMAT(TE.dEndDate,'yyyy-MM-dd') AS 'End' 
             FROM 
                 Track T
-                INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
+            INNER JOIN 
+                Term TE ON T.iTrackID = TE.iTrackID
             ORDER BY 
                 TE.iTermID
             ;"
