@@ -100,16 +100,16 @@ function Get-GradesBetween  {
     $includePK = $false
 
     if (($first.ToLower() -eq "pk") -AND ($second.ToLower() -eq "pk")) {
-        return "pk"
+        return "JK"
     }  
     if (($first.ToLower() -eq "0k") -AND ($second.ToLower() -eq "0k")) {
-        return "k"
+        return "SK"
     }
     if (($first.ToLower() -eq "pk") -AND ($second.ToLower() -eq "0k")) {
-        return "pk,k"
+        return "JK,SK"
     }
     if (($first.ToLower() -eq "0k") -AND ($second.ToLower() -eq "pk")) {
-        return "pk,k"
+        return "JK,SK"
     }
        
     # If $first is k or pk, set that aside and set it to 1
@@ -152,11 +152,11 @@ function Get-GradesBetween  {
     }
 
     if ($includeK -eq $true) {
-        $returnMe = "k,$returnMe"
+        $returnMe = "SK,$returnMe"
     }
 
     if ($includePK -eq $true) {
-        $returnMe = "pk,$returnMe"
+        $returnMe = "JK,$returnMe"
     }
 
     return $returnMe
