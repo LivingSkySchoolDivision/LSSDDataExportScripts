@@ -14,7 +14,7 @@ $SqlQuery = "SELECT
                 T.iSchoolID AS SchoolID, 
                 (FORMAT(TE.dEndDate, 'yy') -1) AS SchoolYear, 
                 TE.iTermID AS TermID, 
-                REPLACE(TE.cName, 'SEMESTER', 'Sem') AS Title, 
+                TE.cName AS Title, 
                 FORMAT(TE.dStartDate, 'yyyy-MM-dd') as Start, 
                 FORMAT(TE.dEndDate,'yyyy-MM-dd') AS 'End' 
             FROM 
