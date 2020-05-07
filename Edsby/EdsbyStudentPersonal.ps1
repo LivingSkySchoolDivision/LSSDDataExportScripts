@@ -44,7 +44,7 @@ $SqlQuery = "SELECT
                 RTRIM(LTRIM(cUserName)) AS UserID, 
                 concat(left(cFirstName, 1), left(cLastName, 1), cStudentNumber) AS Password, 
                 'T' AS IntegrationAuth,  
-                RTRIM(LTRIM(g.cName)) AS Grade
+                REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(RTRIM(LTRIM(g.cName)),'0K','K'),'01','1'),'02','2'),'03','3'),'04','4'),'05','5'),'06','6'),'07','7'),'08','8'),'09','9') AS Grade
             FROM Student S
                 LEFT OUTER JOIN LookupValues LV ON S.iLV_GenderID = LV.iLookupValuesID
                 LEFT OUTER JOIN Homeroom hr ON S.iHomeroomID = hr.iHomeroomID
@@ -57,7 +57,8 @@ $SqlQuery = "SELECT
             WHERE 
                 (SS.dInDate <=  { fn CURDATE() }) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
-            ORDER BY S.iStudentID;"
+            ORDER BY 
+                S.iStudentID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
