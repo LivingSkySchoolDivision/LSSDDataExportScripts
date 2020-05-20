@@ -52,11 +52,9 @@ $SqlQuery = "SELECT
                     43,--Karleen Graff
                     268, --Carrie Day
                     1457, --Colleen Fouhy
-                    1475, --Raeleen Secretary
                     1482, --SRB Remote
                     1528, --Shannon Lessard
                     1532, --Douglas Drover
-                    1614, --Kelsey Secretary
                     1938  --Terry Korpach
                     )
             ORDER BY s.iStaffID;"
