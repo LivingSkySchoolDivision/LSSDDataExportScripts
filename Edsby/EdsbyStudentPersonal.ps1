@@ -56,7 +56,8 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
             WHERE 
                 (SS.dInDate <=  { fn CURDATE() }) AND
-                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
+				S.iSchoolID NOT IN (5851067) --HomeSchool 
             ORDER BY 
                 S.iStudentID;"
 
