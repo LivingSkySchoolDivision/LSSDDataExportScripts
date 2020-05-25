@@ -17,12 +17,18 @@ param (
 $SqlQuery = "SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
-                LEFT(C.iClassID, 3) + RIGHT(C.iClassID, 2) AS SectionID,
+                LEFT(C.iClassID,5) AS SectionID,
                 C.cSection AS SubSection,
-                TE.iTermID AS TermID,
+                CASE WHEN
+                    CR.iClassResourceID NOT IN (SELECT iClassResourceID FROM ClassSchedule)
+                THEN
+                    REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM Term TE2 WHERE TE2.iTrackID = ELMTERM.ITRACKID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',')
+                ELSE
+                    REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM ClassSchedule CS2 WHERE CS2.iClassResourceID = CS.iClassResourceID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',')
+                END AS TermID,
                 CO.cGovernmentCode AS CourseID,
                 '' AS TeacherGUID,
-                CASE WHEN CR.iRoomID = 0 THEN NULL ELSE R.iRoomID END AS RoomID,
+                REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM ClassResource CR2 WHERE CR2.iClassID = CR.iClassID AND CR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
                 '' AS GradeLevel,
                 SUB.cName AS Subject,
                 CO.iCourseID AS CourseCode,
@@ -35,13 +41,13 @@ $SqlQuery = "SELECT DISTINCT
             FROM Class C
                 INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
-                LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
+                LEFT OUTER JOIN ROOM R ON CR.iRoomID = R.iRoomID
                 INNER JOIN Grades LOW ON C.iLow_GradesID = LOW.iGradesID
                 INNER JOIN Grades HIGH ON C.iHigh_GradesID = HIGH.iGradesID
                 INNER JOIN Course CO ON C.iCourseID = CO.iCourseID
                 LEFT OUTER JOIN LookupValues SUB ON CO.iLV_SubjectID = SUB.iLookupValuesID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                LEFT OUTER JOIN TERM TE ON T.iTrackID = TE.iTrackID AND CS.iTermID = TE.iTermID
+                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
             ORDER BY
                 CONCAT(C.iSchoolID,'-',C.iClassID);"
 
