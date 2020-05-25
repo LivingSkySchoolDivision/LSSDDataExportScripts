@@ -50,9 +50,10 @@ $SqlQuery = "SELECT
                         StudentStatus 
                         LEFT OUTER JOIN ContactRelation ON StudentStatus.iStudentID=ContactRelation.iStudentID
                     WHERE 
-                        (StudentStatus.dInDate <=  { fn CURDATE() }) AND
+                        StudentStatus.iSchoolID NOT IN (5851067) --HomeSchool 
+                        AND (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                         ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
-                        (StudentStatus.lOutsideStatus = 0))
+                        (StudentStatus.lOutsideStatus = 0)) 
                 ORDER BY C.iContactID;"
 
 # CSV Delimeter
