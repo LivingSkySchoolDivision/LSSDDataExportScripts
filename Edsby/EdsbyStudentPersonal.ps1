@@ -17,7 +17,13 @@ $SqlQuery = "SELECT
                 SS.iSchoolID AS SchoolID, 
                 cStudentNumber AS SID, 
                 cGovernmentNumber AS MinistryID, 
-                LEFT(LV.cName,1) AS Gender, 
+                CASE WHEN
+                    LEFT(LV.cName,1) = 'U'
+                THEN
+                    'X'
+                ELSE					
+                    LEFT(LV.cName,1) 
+                END AS Gender, 
                 CASE WHEN
                     HR.i1_StaffID <> '' THEN CONCAT('STAFF-', HR.i1_StaffID) ELSE '' 
                 END AS HomeRoomStaffGUID, 
@@ -57,7 +63,7 @@ $SqlQuery = "SELECT
             WHERE 
                 (SS.dInDate <=  { fn CURDATE() }) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
-				S.iSchoolID NOT IN (5851067) --HomeSchool 
+                S.iSchoolID NOT IN (5851067) --HomeSchool 
             ORDER BY 
                 S.iStudentID;"
 
