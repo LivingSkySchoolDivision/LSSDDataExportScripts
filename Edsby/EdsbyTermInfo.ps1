@@ -20,7 +20,9 @@ $SqlQuery = "SELECT
             FROM 
                 Track T
             INNER JOIN 
-                Term TE ON T.iTrackID = TE.iTrackID
+                Term TE ON T.iTrackID = TE.iTrackID                
+			WHERE
+                T.iSchoolID NOT IN (5851067) --HomeSchool  
             ORDER BY 
                 TE.iTermID
             ;"
