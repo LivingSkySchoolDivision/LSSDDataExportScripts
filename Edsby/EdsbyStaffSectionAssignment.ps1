@@ -19,8 +19,18 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN UserStaff US ON CR.iStaffID = US.iStaffID
                 LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
-            WHERE C.iSchoolID NOT IN (5851066)
-            ORDER BY C.iSchoolID, CR.iStaffID"
+				INNER JOIN Staff S ON CR.iStaffID = S.iStaffID
+            WHERE 
+                C.iSchoolID NOT IN (
+                    5850953, -- Major School
+                    5850963, -- Manacowin School
+                    5850964, -- Phoenix School
+                    5851066, -- Zinactive
+                    5851067 -- Home Based 
+                ) AND
+                S.iSchoolID = C.iSchoolID
+            ORDER BY 
+                C.iSchoolID, CR.iStaffID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
