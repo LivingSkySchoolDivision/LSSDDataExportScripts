@@ -26,7 +26,7 @@ $SqlQuery = "SELECT DISTINCT
                 ELSE
                     REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM ClassSchedule CS2 WHERE CS2.iClassResourceID = CS.iClassResourceID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',')
                 END AS TermID,
-                CO.cGovernmentCode AS CourseID,
+                'SK.' + CO.cGovernmentCode AS CourseID,
                 '' AS TeacherGUID,
                 REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM ClassResource CR2 WHERE CR2.iClassID = CR.iClassID AND CR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
                 '' AS GradeLevel,
