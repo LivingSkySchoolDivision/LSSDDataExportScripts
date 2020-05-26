@@ -13,13 +13,7 @@ param (
 $SqlQuery = "SELECT
                 S.iSchoolID AS SchoolID,
                 LTRIM(RTRIM(S.cName)) AS SchoolName,
-                CASE WHEN
-					LTRIM(RTRIM(ST.cName)) = 'PS'
-				THEN
-					'E'
-				ELSE
-					LTRIM(RTRIM(ST.cName))
-				END AS SchoolType,
+                REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(ST.cName)),'PS','E'),'K12','C'),'HS','S') AS SchoolType,
                 'Regular' AS SchoolFocus,
                 '' AS DistrictID,
                 LTRIM(RTRIM(URL.mInfo)) AS SchoolURL,
