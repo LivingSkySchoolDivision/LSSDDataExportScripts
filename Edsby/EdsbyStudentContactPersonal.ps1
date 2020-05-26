@@ -50,7 +50,13 @@ $SqlQuery = "SELECT
                         StudentStatus 
                         LEFT OUTER JOIN ContactRelation ON StudentStatus.iStudentID=ContactRelation.iStudentID
                     WHERE 
-                        StudentStatus.iSchoolID NOT IN (5851067) --HomeSchool 
+                        C.iSchoolID NOT IN iSchoolID in (
+                            5850953, -- Major School
+                            5850963, -- Manacowin School
+                            5850964, -- Phoenix School
+                            5851066, -- Zinactive
+                            5851067 -- Home Based 
+                            )
                         AND (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                         ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                         (StudentStatus.lOutsideStatus = 0)) 
