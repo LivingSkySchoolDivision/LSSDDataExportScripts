@@ -13,7 +13,7 @@ param (
 $SqlQuery = "SELECT
                 CONCAT('CONTACT-', ContactRelation.iContactID) as ContactGUID,
                 CONCAT('STUDENT-',ContactRelation.iStudentID) as StudentGUID,
-                ContactRelation.iSchoolID as SchoolID,
+                S.iSchoolID as SchoolID,
                 LVRelation.cName as Relation,
                 CASE WHEN(ContactRelation.lMail=1) THEN 'Yes' ELSE 'No' END AS AccessToRecords,
                 'Unknown' as LegalGuardian,
@@ -29,11 +29,12 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN Contact ON ContactRelation.iContactID=Contact.iContactID
                 LEFT OUTER JOIN StudentStatus ON ContactRelation.iStudentID=StudentStatus.iStudentID
                 LEFT OUTER JOIN LookupValues AS LVRelation ON ContactRelation.iLV_RelationID=LVRelation.iLookupValuesID
+                LEFT OUTER JOIN Student S ON ContactRelation.iStudentID = S.iStudentID
             WHERE 
                 (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                 ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                 (StudentStatus.lOutsideStatus = 0) AND
-                StudentStatus.iSchoolID NOT IN (5851067) --HomeSchool 
+                S.iSchoolID NOT IN (5851067) --HomeSchool 
                 AND LVRelation.cName IN (
                     'Father',
                     'Mother',
