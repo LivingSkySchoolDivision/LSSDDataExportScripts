@@ -50,7 +50,7 @@ $SqlQuery = "SELECT
                         StudentStatus 
                         LEFT OUTER JOIN ContactRelation ON StudentStatus.iStudentID=ContactRelation.iStudentID
                     WHERE 
-                        C.iSchoolID NOT IN iSchoolID in (
+                        C.iSchoolID NOT IN (
                             5850953, -- Major School
                             5850963, -- Manacowin School
                             5850964, -- Phoenix School
