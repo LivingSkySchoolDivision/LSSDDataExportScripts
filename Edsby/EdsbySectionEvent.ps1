@@ -13,18 +13,20 @@ param (
 $SqlQuery = "SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
-                CS.iDayNumber AS DayID,
+                D.iDaysID AS DayID,
                 CASE WHEN CR.iRoomID = 0 THEN NULL ELSE R.iRoomID END AS RoomID,
                 T.iTrackID AS ScheduleID,
                 CS.iTermID AS TermID,
                 CS.iBlockNumber AS PeriodID,
                 CASE WHEN T.lDaily = 1 THEN 'F' ELSE 'T' END AS TakeAttendance,
                 '' AS TeacherGUID
-            FROM Class C
+            FROM 
+                Class C
                 INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
+                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID
             WHERE 
                 C.iSchoolID NOT IN (5851066)
             ORDER BY 
