@@ -27,7 +27,7 @@ $SqlQuery_Count = "SELECT
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 
 $SqlQuery_Photos = "SELECT
-                            CONCAT('STUDENT-',Student.cStudentNumber), 
+                            CONCAT('STUDENT-',Student.iStudentID), 
                             StudentPhoto.bImage, 
                             StudentPhoto.cImageType 
                         FROM 
