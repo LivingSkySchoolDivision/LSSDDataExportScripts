@@ -14,7 +14,6 @@ $SqlQuery = "SELECT
                 CONCAT('CONTACT-', C.iContactID) AS ContactGUID,
                 C.cFirstName AS FirstName,
                 C.cLastName AS LastName,
-                '' AS StudentGUID,
                 '' AS Relation,
                 '' AS AccessToRecords,
                 C.iSchoolID AS SchoolID,
