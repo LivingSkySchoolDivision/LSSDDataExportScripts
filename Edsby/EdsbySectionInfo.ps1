@@ -33,8 +33,8 @@ $SqlQuery = "SELECT DISTINCT
                 SUB.cName AS Subject,
                 CO.iCourseID AS CourseCode,
                 CO.cName AS CourseTitle,
-                CASE WHEN T.lDaily = 1 THEN 0 ELSE 1 END AS Attendance,
-                CASE WHEN T.lDaily = 1 THEN 4 ELSE 0 END AS ScheduleMode,
+                CASE WHEN C.cName LIKE 'HOMEROOM%' OR T.lDaily = 0 THEN 1  ELSE 0 END AS Attendance,
+                CASE WHEN C.cName LIKE 'HOMEROOM%' OR T.lDaily = 0 THEN 0 ELSE 4 END AS ScheduleMode,
                 T.iTrackID AS ScheduleID,
                 LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
