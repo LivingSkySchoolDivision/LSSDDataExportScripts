@@ -11,6 +11,25 @@ param (
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT DISTINCT
+                HR.iSchoolID AS SchoolID,
+                CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
+                D.iDaysID AS DayID,
+                CASE WHEN HR.iRoomID = 0 THEN NULL ELSE HR.iRoomID END AS RoomID,
+                T.iTrackID AS ScheduleID,
+                TE.iTermID AS TermID,
+                AB.iBlockNumber AS PeriodID,
+                'F' AS TakeAttendance,
+                '' AS TeacherGUID
+            FROM 
+                Homeroom HR
+                INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN Track T ON S.iTrackID = T.iTrackID
+                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID
+                INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
+                INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
+            WHERE T.lDaily = 1
+            UNION ALL
+            SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
                 D.iDaysID AS DayID,
@@ -26,11 +45,7 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID
-            WHERE 
-                C.iSchoolID NOT IN (5851066)
-            ORDER BY 
-                CONCAT(C.iSchoolID,'-',C.iClassID);"
+                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
