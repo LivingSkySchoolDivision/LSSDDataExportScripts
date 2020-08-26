@@ -15,6 +15,33 @@ param (
 # If you modify this query, the post-processing code below may need to be modified as well.
 ##### IMPORTANT
 $SqlQuery = "SELECT DISTINCT
+                HR.iSchoolID AS SchoolID,
+                CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
+                LEFT(HR.iHomeroomID,5) AS SectionID,
+                HR.cName AS SubSection,
+                REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM Term TE2 WHERE TE2.iSchoolID = HR.iSchoolID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',') AS TermID,
+                'SK.NAC' AS CourseID,
+                '' AS TeacherGUID,
+                REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM Homeroom HR2 WHERE HR2.iHomeroomID = HR.iHomeroomID AND HR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
+                '' AS GradeLevel,
+                'Homeroom Attendance' AS Subject,
+                '814' AS CourseCode,
+                'Homeroom Attendance' AS CourseTitle,
+                '1' Attendance,
+                '0' ScheduleMode,
+                T.iTrackID AS ScheduleID,
+                '' AS LOWGRADE,
+                '' AS HIGHGRADE
+            FROM Homeroom HR
+                INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                LEFT OUTER JOIN ROOM R ON HR.iRoomID = R.iRoomID
+                INNER JOIN Grades G ON S.iGradesID = G.iGradesID
+                INNER JOIN Track T ON S.iTrackID = T.iTrackID
+                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
+             WHERE
+                T.lDaily = 1
+            UNION ALL
+            SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
                 LEFT(C.iClassID,5) AS SectionID,
@@ -33,8 +60,8 @@ $SqlQuery = "SELECT DISTINCT
                 SUB.cName AS Subject,
                 CO.iCourseID AS CourseCode,
                 CO.cName AS CourseTitle,
-                CASE WHEN C.cName LIKE 'HOMEROOM%' OR T.lDaily = 0 THEN 1  ELSE 0 END AS Attendance,
-                CASE WHEN C.cName LIKE 'HOMEROOM%' OR T.lDaily = 0 THEN 0 ELSE 4 END AS ScheduleMode,
+                CASE WHEN T.lDaily = 0 THEN 1  ELSE 0 END AS Attendance,
+                CASE WHEN T.lDaily = 0 THEN 0 ELSE 4 END AS ScheduleMode,
                 T.iTrackID AS ScheduleID,
                 LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
@@ -47,9 +74,7 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN Course CO ON C.iCourseID = CO.iCourseID
                 LEFT OUTER JOIN LookupValues SUB ON CO.iLV_SubjectID = SUB.iLookupValuesID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
-            ORDER BY
-                CONCAT(C.iSchoolID,'-',C.iClassID);"
+                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
