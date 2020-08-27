@@ -26,7 +26,7 @@ $SqlQuery = "SELECT DISTINCT
                 '' AS GradeLevel,
                 'Homeroom Attendance' AS Subject,
                 '814' AS CourseCode,
-                'Homeroom Attendance' AS CourseTitle,
+                'Homeroom ' + HR.cName AS CourseTitle,
                 '1' Attendance,
                 '0' ScheduleMode,
                 T.iTrackID AS ScheduleID,
