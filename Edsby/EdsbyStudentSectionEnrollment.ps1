@@ -11,6 +11,18 @@ param (
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT 
+                HR.iSchoolID as SchoolID,
+                CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) as SectionGUID,
+                CONCAT('STUDENT-',S.iStudentID) as StudentGUID
+            FROM
+                Homeroom HR
+                INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN Track T ON S.iTrackID = T.iTrackID
+            WHERE 
+                T.lDaily = 1
+            UNION 
+                ALL
+            SELECT 
                 Enrollment.iSchoolID as SchoolID,
                 CONCAT(Enrollment.iSchoolID,'-',Enrollment.iClassID) as SectionGUID,
                 CONCAT('STUDENT-',Enrollment.iStudentID) as StudentGUID
