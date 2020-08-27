@@ -11,15 +11,39 @@ param (
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT
+                HR.iSchoolID AS SchoolID,
+                CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
+                CONCAT('STAFF-',ST1.iStaffID) AS StaffGUID,
+                R.cName AS Role
+            FROM 
+                Homeroom HR
+                LEFT OUTER JOIN Staff ST1 ON HR.i1_StaffID = ST1.iStaffID
+                LEFT OUTER JOIN Staff ST2 ON HR.i2_StaffID = ST2.iStaffID
+                LEFT OUTER JOIN UserStaff US ON ST1.iStaffID = US.iStaffID	OR ST2.iStaffID = US.iStaffID
+                LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
+                INNER JOIN Track T ON HR.iSchoolID = T.iSchoolID
+            WHERE 
+                HR.iSchoolID NOT IN (
+                    5850953, -- Major School
+                    5850963, -- Manacowin School
+                    5850964, -- Phoenix School
+                    5851066, -- Zinactive
+                    5851067 -- Home Based 
+                ) AND
+                T.lDaily = 1
+            UNION
+                ALL
+            SELECT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
                 CONCAT('STAFF-',CR.iStaffID) AS StaffGUID,
                 R.cName AS Role
-            FROM Class C
+            FROM 
+                Class C
                 LEFT OUTER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN UserStaff US ON CR.iStaffID = US.iStaffID
                 LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
-				INNER JOIN Staff S ON CR.iStaffID = S.iStaffID
+                INNER JOIN Staff S ON CR.iStaffID = S.iStaffID
             WHERE 
                 C.iSchoolID NOT IN (
                     5850953, -- Major School
@@ -28,9 +52,7 @@ $SqlQuery = "SELECT
                     5851066, -- Zinactive
                     5851067 -- Home Based 
                 ) AND
-                S.iSchoolID = C.iSchoolID
-            ORDER BY 
-                C.iSchoolID, CR.iStaffID;"
+                S.iSchoolID = C.iSchoolID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
