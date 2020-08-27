@@ -19,7 +19,7 @@ $SqlQuery = "SELECT DISTINCT
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
                 LEFT(HR.iHomeroomID,5) AS SectionID,
                 HR.cName AS SubSection,
-                REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM Term TE2 WHERE TE2.iSchoolID = HR.iSchoolID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',') AS TermID,
+                REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM Term TE2 WHERE TE2.iTrackID = T.iTrackID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',') AS TermID,
                 'SK.NAC' AS CourseID,
                 '' AS TeacherGUID,
                 REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM Homeroom HR2 WHERE HR2.iHomeroomID = HR.iHomeroomID AND HR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
@@ -32,15 +32,17 @@ $SqlQuery = "SELECT DISTINCT
                 T.iTrackID AS ScheduleID,
                 '' AS LOWGRADE,
                 '' AS HIGHGRADE
-            FROM Homeroom HR
+            FROM 
+                Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
                 LEFT OUTER JOIN ROOM R ON HR.iRoomID = R.iRoomID
                 INNER JOIN Grades G ON S.iGradesID = G.iGradesID
                 INNER JOIN Track T ON S.iTrackID = T.iTrackID
                 INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
-             WHERE
+            WHERE
                 T.lDaily = 1
-            UNION ALL
+            UNION 
+                ALL
             SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
@@ -65,7 +67,8 @@ $SqlQuery = "SELECT DISTINCT
                 T.iTrackID AS ScheduleID,
                 LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
-            FROM Class C
+            FROM 
+                Class C
                 INNER JOIN ClassResource CR ON C.iClassID = CR.iClassID
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 LEFT OUTER JOIN ROOM R ON CR.iRoomID = R.iRoomID
