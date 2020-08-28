@@ -17,9 +17,12 @@ $SqlQuery = "SELECT
             FROM
                 Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
                 INNER JOIN Track T ON S.iTrackID = T.iTrackID
             WHERE 
-                T.lDaily = 1
+                T.lDaily = 1 AND
+                (SS.dInDate <=  { fn CURDATE() }) AND
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
             UNION 
                 ALL
             SELECT 
@@ -30,6 +33,7 @@ $SqlQuery = "SELECT
                 Enrollment
             WHERE
                 iLV_CompletionStatusID=0;"
+
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
