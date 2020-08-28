@@ -10,26 +10,29 @@ param (
 # SQL Query to run
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
-$SqlQuery = "SELECT
+$SqlQuery = "SELECT DISTINCT
                 HR.iSchoolID AS SchoolID,
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
-                CONCAT('STAFF-',ST1.iStaffID) AS StaffGUID,
+                CONCAT('STAFF-',ST.iStaffID) AS StaffGUID,
                 R.cName AS Role
             FROM 
                 Homeroom HR
-                LEFT OUTER JOIN Staff ST1 ON HR.i1_StaffID = ST1.iStaffID
-                LEFT OUTER JOIN Staff ST2 ON HR.i2_StaffID = ST2.iStaffID
-                LEFT OUTER JOIN UserStaff US ON ST1.iStaffID = US.iStaffID	OR ST2.iStaffID = US.iStaffID
+                LEFT OUTER JOIN Staff ST ON HR.i1_StaffID = ST.iStaffID OR HR.i2_StaffID = ST.iStaffID
+                LEFT OUTER JOIN UserStaff US ON ST.iStaffID = US.iStaffID
                 LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
-                INNER JOIN Track T ON HR.iSchoolID = T.iSchoolID
+                INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
+                INNER JOIN Track T ON S.iTrackID = T.iTrackID
             WHERE 
-                HR.iSchoolID NOT IN (
+                ST.iSchoolID NOT IN (
                     5850953, -- Major School
                     5850963, -- Manacowin School
                     5850964, -- Phoenix School
                     5851066, -- Zinactive
                     5851067 -- Home Based 
                 ) AND
+                (SS.dInDate <=  { fn CURDATE() }) AND
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
                 T.lDaily = 1
             UNION
                 ALL
