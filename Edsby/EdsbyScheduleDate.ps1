@@ -19,7 +19,7 @@ $SqlQuery = "SELECT DISTINCT
                 CASE WHEN 
                     CAL.iCalendarID IN (SELECT iCalendarID FROM CalendarDetails) OR CAL.iBlockTime <> 0 THEN 'ALT' ELSE 'REG' END
                 AS BSID,
-                D.cName AS DayName
+                LTRIM(RTRIM(D.cName)) AS DayName
             FROM School S
                 INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
                 INNER JOIN TERM TE ON T.iTrackID = TE.iTrackID
