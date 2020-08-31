@@ -29,7 +29,7 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
             WHERE 
                 T.lDaily = 1
-                
+            
             UNION 
                 ALL
 
@@ -50,7 +50,7 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
                 INNER JOIN Days D ON T.iTrackID =D.iTrackID
-                INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
+                INNER JOIN Blocks B ON cs.iBlockNumber = b.iBlockNumber and t.iTrackID = b.iTrackID
             WHERE 
                 T.lDaily = 0;"
 
