@@ -13,7 +13,9 @@ param (
 $SqlQuery = "SELECT DISTINCT
                 HR.iSchoolID AS SchoolID,
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
-                CONCAT('STAFF-',ST.iStaffID) AS StaffGUID,
+                CASE WHEN
+                    US.iBaseStaffIDid = 0 THEN CONCAT('STAFF-',ST.iStaffID) ELSE CONCAT('STAFF-',US.iBaseStaffIDid) 
+                END AS StaffGUID,
                 R.cName AS Role
             FROM 
                 Homeroom HR
@@ -34,8 +36,10 @@ $SqlQuery = "SELECT DISTINCT
                 (SS.dInDate <=  { fn CURDATE() }) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
                 T.lDaily = 1
+
             UNION
                 ALL
+                
             SELECT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
