@@ -20,7 +20,7 @@ $SqlQuery = "SELECT DISTINCT
             FROM 
                 Homeroom HR
                 LEFT OUTER JOIN Staff ST ON HR.i1_StaffID = ST.iStaffID OR HR.i2_StaffID = ST.iStaffID
-                LEFT OUTER JOIN UserStaff US ON ST.iStaffID = US.iStaffID
+                INNER JOIN UserStaff US ON ST.iStaffID = US.iStaffID
                 LEFT OUTER JOIN LookupValues R ON US.iEdsbyRoleid = R.iLookupValuesID
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
                 INNER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
@@ -39,7 +39,7 @@ $SqlQuery = "SELECT DISTINCT
 
             UNION
                 ALL
-                
+
             SELECT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
