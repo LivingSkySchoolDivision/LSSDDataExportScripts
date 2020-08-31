@@ -17,8 +17,8 @@ $SqlQuery = "SELECT DISTINCT
                 CASE WHEN HR.iRoomID = 0 THEN NULL ELSE HR.iRoomID END AS RoomID,
                 T.iTrackID AS ScheduleID,
                 TE.iTermID AS TermID,
-                AB.iBlockNumber AS PeriodID,
-                'F' AS TakeAttendance,
+                AB.iAttendanceBlocksID AS PeriodID,
+                'T' AS TakeAttendance,
                 '' AS TeacherGUID
             FROM 
                 Homeroom HR
@@ -27,8 +27,12 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID
                 INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
-            WHERE T.lDaily = 1
-            UNION ALL
+            WHERE 
+                T.lDaily = 1
+                
+            UNION 
+                ALL
+
             SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
@@ -36,8 +40,8 @@ $SqlQuery = "SELECT DISTINCT
                 CASE WHEN CR.iRoomID = 0 THEN NULL ELSE R.iRoomID END AS RoomID,
                 T.iTrackID AS ScheduleID,
                 CS.iTermID AS TermID,
-                CS.iBlockNumber AS PeriodID,
-                CASE WHEN T.lDaily = 1 THEN 'F' ELSE 'T' END AS TakeAttendance,
+                B.IBlocksID AS PeriodID,
+                'T' AS TakeAttendance,
                 '' AS TeacherGUID
             FROM 
                 Class C
@@ -45,7 +49,10 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID;"
+                INNER JOIN Days D ON T.iTrackID =D.iTrackID
+                INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
+            WHERE 
+                T.lDaily = 0;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
