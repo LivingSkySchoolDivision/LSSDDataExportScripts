@@ -13,24 +13,35 @@ param (
 $SqlQuery = "SELECT DISTINCT
                 S.iSchoolID AS SchoolID,
                 T.iTrackID AS ScheduleID,
-                CASE WHEN 
-                    AB.tStartTime1 != '1900-01-01 00:00:00.000'  THEN 'ALT' ELSE 'REG' END
-                AS BSID,
+                'REG' AS BSID,
                 AB.iAttendanceBlocksID AS PeriodID,
                 LTRIM(RTRIM(AB.cName)) AS PeriodName,
-                CASE WHEN 
-                    AB.tStartTime1 != '1900-01-01 00:00:00.000' THEN FORMAT(AB.tStartTime1,'HH:mm') ELSE FORMAT(AB.tStartTime,'HH:mm') END
-                AS stime,
-                CASE WHEN 
-                    AB.tStartTime1 != '1900-01-01 00:00:00.000' THEN FORMAT(AB.tEndTime1,'HH:mm') ELSE FORMAT(AB.tEndTime,'HH:mm') END 
-                AS etime
+                FORMAT(AB.tStartTime,'HH:mm') AS stime,
+                FORMAT(AB.tEndTime,'HH:mm') AS etime
+            FROM 
+                School S
+                INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
+                LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
+                INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
+
+            UNION
+                ALL
+
+            SELECT DISTINCT
+                S.iSchoolID AS SchoolID,
+                T.iTrackID AS ScheduleID,
+                'ALT' AS BSID,
+                AB.iAttendanceBlocksID AS PeriodID,
+                LTRIM(RTRIM(AB.cName)) AS PeriodName,
+                FORMAT(AB.tStartTime1,'HH:mm') AS stime,
+                FORMAT(AB.tEndTime1,'HH:mm') AS etime
             FROM 
                 School S
                 INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
                 LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
             WHERE 
-                T.cName NOT LIKE 'NYR%' 
+                AB.tStartTime1 != '1900-01-01 00:00:00.000'
 
             UNION 
                 ALL
@@ -38,24 +49,35 @@ $SqlQuery = "SELECT DISTINCT
             SELECT DISTINCT
                 S.iSchoolID AS SchoolID,
                 T.iTrackID AS ScheduleID,
-                CASE WHEN 
-                    B.tStartTime1 != '1900-01-01 00:00:00.000'  THEN 'ALT' ELSE 'REG' END
-                AS BSID,
+                'REG' AS BSID,
                 B.IBlocksID AS PeriodID,
                 LTRIM(RTRIM(B.cName)) AS PeriodName,
-                CASE WHEN 
-                    B.tStartTime1 != '1900-01-01 00:00:00.000' THEN FORMAT(B.tStartTime1,'HH:mm') ELSE FORMAT(B.tStartTime,'HH:mm') END
-                AS stime,
-                CASE WHEN 
-                    B.tStartTime1 != '1900-01-01 00:00:00.000' THEN FORMAT(B.tEndTime1,'HH:mm') ELSE FORMAT(B.tEndTime,'HH:mm') END 
-                AS etime
+                FORMAT(B.tStartTime,'HH:mm') AS stime,
+                FORMAT(B.tEndTime,'HH:mm') AS etime
+            FROM 
+                School S
+                INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
+                LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
+                INNER JOIN Blocks B ON T.iTrackID = B.iTrackID                
+
+            UNION
+                ALL
+
+            SELECT DISTINCT
+                S.iSchoolID AS SchoolID,
+                T.iTrackID AS ScheduleID,
+                'ALT' AS BSID,
+                B.IBlocksID AS PeriodID,
+                LTRIM(RTRIM(B.cName)) AS PeriodName,
+                FORMAT(B.tStartTime1,'HH:mm') AS stime,
+                FORMAT(B.tEndTime1,'HH:mm') AS etime
             FROM 
                 School S
                 INNER JOIN Track T ON S.iSchoolID = T.iSchoolID
                 LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
             WHERE 
-                T.cName NOT LIKE 'NYR%';"
+                B.tStartTime1 != '1900-01-01 00:00:00.000';"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
