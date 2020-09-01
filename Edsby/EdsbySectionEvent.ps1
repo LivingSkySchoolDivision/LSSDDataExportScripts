@@ -49,7 +49,7 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN ROOM R ON R.iRoomID = (SELECT TOP 1(iRoomID) FROM ClassResource WHERE iClassID = C.iClassID)
                 LEFT OUTER JOIN ClassSchedule CS ON CR.iClassResourceID = CS.iClassResourceID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN Days D ON T.iTrackID =D.iTrackID
+                INNER JOIN Days D ON T.iTrackID = D.iTrackID AND CS.iDayNumber = D.iDayNumber
                 INNER JOIN Blocks B ON cs.iBlockNumber = b.iBlockNumber and t.iTrackID = b.iTrackID
             WHERE 
                 T.lDaily = 0;"
