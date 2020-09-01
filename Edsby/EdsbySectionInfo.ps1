@@ -55,7 +55,13 @@ $SqlQuery = "SELECT DISTINCT
                 ELSE
                     REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM ClassSchedule CS2 WHERE CS2.iClassResourceID = CS.iClassResourceID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',')
                 END AS TermID,
-                'SK.' + CO.cGovernmentCode AS CourseID,
+                CASE WHEN
+					CO.cGovernmentCode != 'NAC' AND CO.cGovernmentCode < 999 
+				THEN 
+					'SK.0' + CO.cGovernmentCode 
+				ELSE 
+					'SK.' + CO.cGovernmentCode 
+				END AS CourseID,
                 '' AS TeacherGUID,
                 REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM ClassResource CR2 WHERE CR2.iClassID = CR.iClassID AND CR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
                 '' AS GradeLevel,
