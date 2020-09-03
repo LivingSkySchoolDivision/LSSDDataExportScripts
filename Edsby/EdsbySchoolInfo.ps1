@@ -41,7 +41,11 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN Country C ON S.iCountryID = C.iCountryID
                 LEFT OUTER JOIN LookupValues PROV ON S.iLV_RegionID = PROV.iLookupValuesID
                 LEFT OUTER JOIN Staff STA ON LEFT(cPrincipal,CHARINDEX(' ', S.cPrincipal)) = STA.cFirstName AND SUBSTRING(cPrincipal, CHARINDEX(' ', cPrincipal)+1, LEN(cPrincipal)-(CHARINDEX(' ', cPrincipal)-1)) = STA.cLastName AND STA.cUserName NOT LIKE '%.%.%'
-            WHERE S.iSchoolID IN (SELECT DISTINCT(iSchoolID) FROM StudentStatus WHERE StudentStatus.dInDate <=  { fn CURDATE() } AND(StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() })  AND StudentStatus.lOutsideStatus = 0)AND STA.iSchoolID = S.iSchoolID
+            WHERE                 
+				S.iSchoolID IN (SELECT DISTINCT(iSchoolID) FROM StudentStatus WHERE StudentStatus.dInDate <=  { fn CURDATE() } AND (StudentStatus.dOutDate < '1901-01-01') 
+				OR (StudentStatus.dOutDate >=  { fn CURDATE() })  AND StudentStatus.lOutsideStatus = 0) 
+				AND STA.iSchoolID = S.iSchoolID 
+				OR s.iSchoolID = 5851128
             ORDER BY S.cName;"
 
 # CSV Delimeter
