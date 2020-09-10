@@ -31,7 +31,7 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN LookupValues AS LVRelation ON ContactRelation.iLV_RelationID=LVRelation.iLookupValuesID
                 LEFT OUTER JOIN Student S ON ContactRelation.iStudentID = S.iStudentID
             WHERE 
-                (StudentStatus.dInDate <=  { fn CURDATE() }) AND
+                (StudentStatus.dInDate <=  getDate() + 1) AND
                 ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                 (StudentStatus.lOutsideStatus = 0) AND
                 S.iSchoolID NOT IN (5851067) --HomeSchool 
