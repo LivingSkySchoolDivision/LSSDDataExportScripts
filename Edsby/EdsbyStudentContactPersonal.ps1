@@ -56,7 +56,7 @@ $SqlQuery = "SELECT
                             5851066, -- Zinactive
                             5851067 -- Home Based 
                             )
-                        AND (StudentStatus.dInDate <=  { fn CURDATE() }) AND
+                        AND (StudentStatus.dInDate <=  getDate() + 1) AND
                         ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                         (StudentStatus.lOutsideStatus = 0)) 
                 ORDER BY C.iContactID;"
