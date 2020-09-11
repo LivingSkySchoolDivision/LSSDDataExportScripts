@@ -44,8 +44,6 @@ $SqlQuery = "SELECT
             WHERE 
                 s.iSchoolID NOT IN (5850953,5850963,5850964,5851066) 
                 AND cLastName NOT LIKE 'ADMIN%' 
-                AND cLastName NOT LIKE '%SubSec%' 
-                AND cLastName NOT LIKE '%SubSso%'
                 AND cLastName NOT LIKE '%egov%' 
                 AND s.iStaffID NOT IN 
                     (
