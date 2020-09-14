@@ -55,7 +55,8 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN Days D ON T.iTrackID = D.iTrackID AND CS.iDayNumber = D.iDayNumber
                 INNER JOIN Blocks B ON cs.iBlockNumber = b.iBlockNumber and t.iTrackID = b.iTrackID
             WHERE 
-                T.lDaily = 0;"
+                T.lDaily = 0 AND
+                C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
