@@ -23,12 +23,16 @@ $SqlQuery = "SELECT DISTINCT
             FROM 
                 Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
                 INNER JOIN Track T ON S.iTrackID = T.iTrackID
-                LEFT OUTER JOIN Days D ON T.iTrackID =D.iTrackID
+                LEFT OUTER JOIN Days D ON S.iTrackID =D.iTrackID
                 INNER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
             WHERE 
                 T.lDaily = 1
+                AND (SS.dInDate <=  getDate() + 1) AND
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))  AND 
+                (SS.lOutsideStatus = 0)
             
             UNION 
                 ALL
