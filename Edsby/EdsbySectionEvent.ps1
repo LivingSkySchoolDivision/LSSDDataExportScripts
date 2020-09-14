@@ -31,8 +31,7 @@ $SqlQuery = "SELECT DISTINCT
             WHERE 
                 T.lDaily = 1
                 AND (SS.dInDate <=  getDate() + 1) AND
-                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))  AND 
-                (SS.lOutsideStatus = 0)
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
             
             UNION 
                 ALL
