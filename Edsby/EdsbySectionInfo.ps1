@@ -44,8 +44,10 @@ $SqlQuery = "SELECT DISTINCT
                 T.lDaily = 1 AND
                 (SS.dInDate <= getDate() + 1) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) 
+
             UNION 
                 ALL
+                
             SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
@@ -72,7 +74,7 @@ $SqlQuery = "SELECT DISTINCT
                 CO.iCourseID AS CourseCode,
                 CO.cName AS CourseTitle,
                 CASE WHEN T.lDaily = 0 THEN 1  ELSE 0 END AS Attendance,
-                CASE WHEN T.lDaily = 0 THEN 0 ELSE 4 END AS ScheduleMode,
+                '0' AS ScheduleMode,
                 T.iTrackID AS ScheduleID,
                 LTRIM(RTRIM(LOW.cName)) AS LOWGRADE,
                 LTRIM(RTRIM(HIGH.cName)) AS HIGHGRADE
