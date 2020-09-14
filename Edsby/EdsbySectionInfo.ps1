@@ -35,12 +35,15 @@ $SqlQuery = "SELECT DISTINCT
             FROM 
                 Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
+                INNER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
                 LEFT OUTER JOIN ROOM R ON HR.iRoomID = R.iRoomID
                 INNER JOIN Grades G ON S.iGradesID = G.iGradesID
                 INNER JOIN Track T ON S.iTrackID = T.iTrackID
                 INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
             WHERE
-                T.lDaily = 1
+                T.lDaily = 1 AND
+                (SS.dInDate <= getDate() + 1) AND
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) 
             UNION 
                 ALL
             SELECT DISTINCT
@@ -56,12 +59,12 @@ $SqlQuery = "SELECT DISTINCT
                     REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iTermID FROM ClassSchedule CS2 WHERE CS2.iClassResourceID = CS.iClassResourceID FOR XML PATH ('')) , 1,1,''),'ITERMID>',''),'</',''),'<',',')
                 END AS TermID,
                 CASE WHEN
-					CO.cGovernmentCode != 'NAC' AND CO.cGovernmentCode < 999 
-				THEN 
-					'SK.0' + CO.cGovernmentCode 
-				ELSE 
-					'SK.' + CO.cGovernmentCode 
-				END AS CourseID,
+                    CO.cGovernmentCode != 'NAC' AND CO.cGovernmentCode < 999 
+                THEN 
+                    'SK.0' + CO.cGovernmentCode 
+                ELSE 
+                    'SK.' + CO.cGovernmentCode 
+                END AS CourseID,
                 '' AS TeacherGUID,
                 REPLACE(REPLACE(REPLACE(STUFF((SELECT DISTINCT iRoomID FROM ClassResource CR2 WHERE CR2.iClassID = CR.iClassID AND CR2.iRoomID > 0 FOR XML PATH ('')) , 1,1,''),'iRoomID>',''),'</',''),'<',',') AS RoomID,
                 '' AS GradeLevel,
@@ -83,7 +86,9 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN Course CO ON C.iCourseID = CO.iCourseID
                 LEFT OUTER JOIN LookupValues SUB ON CO.iLV_SubjectID = SUB.iLookupValuesID
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
-                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID;"
+                INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
+            WHERE
+                C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
