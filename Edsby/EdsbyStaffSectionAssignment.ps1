@@ -14,7 +14,7 @@ $SqlQuery = "SELECT DISTINCT
                 HR.iSchoolID AS SchoolID,
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) AS SectionGUID,
                 CASE WHEN
-                    US.iBaseStaffIDid = 0 THEN CONCAT('STAFF-',ST.iStaffID) ELSE CONCAT('STAFF-',US.iBaseStaffIDid) 
+                    US.iBaseStaffIDid <> 0 THEN CONCAT('STAFF-',US.iBaseStaffIDid) ELSE CONCAT('STAFF-',ST.iStaffID) 
                 END AS StaffGUID,
                 R.cName AS Role
             FROM 
@@ -43,7 +43,9 @@ $SqlQuery = "SELECT DISTINCT
             SELECT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
-                CONCAT('STAFF-',CR.iStaffID) AS StaffGUID,
+				CASE WHEN 
+					US.iBaseStaffIDid <> 0 THEN CONCAT('STAFF-',US.iBaseStaffIDid) ELSE CONCAT('STAFF-',CR.iStaffID) 
+				END AS StaffGUID,
                 R.cName AS Role
             FROM 
                 Class C
