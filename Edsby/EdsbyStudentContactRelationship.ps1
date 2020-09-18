@@ -35,23 +35,25 @@ $SqlQuery = "SELECT
                 ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
                 (StudentStatus.lOutsideStatus = 0) AND
                 S.iSchoolID NOT IN (5851067) --HomeSchool 
-                AND LVRelation.cName IN (
-                    'Father',
-                    'Mother',
-                    'Parent',
-                    'Stepfather',
-                    'Stepmother',
-                    'Stepparent',
-                    'Grandfather',
-                    'Grandmother',
-                    'Grandparent',
-                    'Uncle',
-                    'Aunt',
-                    'Brother',
-                    'Sister',
-                    'Sibling',
-                    'Cousin',
-                    'Guardian'
+                AND LVRelation.cName NOT IN (
+                    'Doctor', 
+                    'Mother & Father', 
+                    'Sister', 
+                    'Self', 
+                    'Sibling', 
+                    'Social Worker', 
+                    'Wife', 
+                    'Cousin', 
+                    'Nurse', 
+                    'Other', 
+                    'Brother', 
+                    'Staff Contact', 
+                    'Mr', 
+                    'Principal', 
+                    'Friend', 
+                    'Niece', 
+                    'Unknown', 
+                    'Nurse Practitioner'
                 );"
 
 # CSV Delimeter
