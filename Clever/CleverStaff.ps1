@@ -2,6 +2,13 @@ param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
     [string]$ConfigFilePath
  )
+##############################################
+# About this file
+##############################################
+# The "staff.csv" file is for staff, who are not teachers.
+# If someone is a teacher, they should not be included in this list, and should be in the teachers.csv file instead.
+# Use for EAs, central office staff, consultants, etc.
+# Probably safe to skip people like bus drivers and caretakers... but you never know.
 
 ##############################################
 # Script configuration                       #
