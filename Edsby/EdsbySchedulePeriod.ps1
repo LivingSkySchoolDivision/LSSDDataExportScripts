@@ -41,7 +41,7 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN AttendanceBlocks AB ON T.iTrackID = AB.iTrackID
             WHERE 
-                AB.tStartTime1 != '1900-01-01 00:00:00.000'
+                AB.tStartTime1 != '1900-01-01 00:00:00.000' AND AB.iInstructionalMinutes1 !=0
 
             UNION 
                 ALL
@@ -77,7 +77,7 @@ $SqlQuery = "SELECT DISTINCT
                 LEFT OUTER JOIN Term TE ON T.iTrackID = TE.iTrackID
                 INNER JOIN Blocks B ON T.iTrackID = B.iTrackID
             WHERE 
-                B.tStartTime1 != '1900-01-01 00:00:00.000';"
+                B.tStartTime1 != '1900-01-01 00:00:00.000' AND B.iInstructionalMinutes1 !=0;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
