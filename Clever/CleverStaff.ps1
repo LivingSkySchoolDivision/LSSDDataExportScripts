@@ -5,10 +5,8 @@ param (
 ##############################################
 # About this file
 ##############################################
-# The "staff.csv" file is for staff, who are not teachers.
-# If someone is a teacher, they should not be included in this list, and should be in the teachers.csv file instead.
-# Use for EAs, central office staff, consultants, etc.
-# Probably safe to skip people like bus drivers and caretakers... but you never know.
+# The "staff.csv" file is designed for non-instructional staff such as secretaries, bus drivers, etc.
+# It is OK to be in both the staff list and the teacher list - The login pages are seperate, but the credentials should work on both.
 
 ##############################################
 # Script configuration                       #
