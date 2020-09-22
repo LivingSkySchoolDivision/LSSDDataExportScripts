@@ -21,7 +21,7 @@ $SqlQuery = "SELECT
                 UserStaff.UF_2085 AS Teacher_id,
                 UserStaff.UF_2085 AS Teacher_number,
                 '' AS State_teacher_id,
-                STaff.mEmail AS Teacher_email,
+                Staff.mEmail AS Teacher_email,
                 LTRIM(RTRIM(Staff.cFirstName)) AS First_name,
                 '' AS Middle_name,
                 LTRIM(RTRIM(Staff.cLastName)) AS Last_name,
@@ -37,7 +37,12 @@ $SqlQuery = "SELECT
                 AND UserStaff.iBaseStaffIDid = ''
                 AND Staff.lClassList=1
                 AND School.lInactive=0
-                AND (SELECT COUNT(iClassID) FROM ClassResource WHERE ClassResource.iStaffID=Staff.iStaffID) > 0
+                AND 
+                    ( 
+                        ((SELECT COUNT(iClassID) FROM ClassResource WHERE ClassResource.iStaffID=Staff.iStaffID) > 0)
+                        OR ((SELECT COUNT(iHomeroomID) FROM Homeroom WHERE (i1_StaffID=Staff.iStaffID) OR (i2_StaffID=Staff.iStaffID)) > 0)
+                        OR ((SELECT COUNT(iClassID) FROM Class WHERE Class.iDefault_StaffID=Staff.iStaffID) > 0)
+                    )
                 AND LEN(LTRIM(RTRIM(UserStaff.UF_2085))) > 0
                 AND LEN(LTRIM(RTRIM(Staff.mEmail))) > 0
             ORDER BY
