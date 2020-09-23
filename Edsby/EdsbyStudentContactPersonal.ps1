@@ -36,8 +36,7 @@ $SqlQuery = "SELECT
             FROM 
                 Contact C
                 LEFT OUTER JOIN LookupValues PR ON C.iLV_TitleID = PR.iLookupValuesID 
-                LEFT OUTER JOIN ContactAddress CA oN C.iContactID = CA.iContactID 
-                LEFT OUTER JOIN Location L ON CA.iLocationID = L.iLocationID 
+                LEFT OUTER JOIN Location L ON C.iLocationID = L.iLocationID 
                 LEFT OUTER JOIN LookupValues CITY ON L.iLV_CityID = CITY.iLookupValuesID
                 LEFT OUTER JOIN LookupValues PROV ON L.iLV_RegionID = PROV.iLookupValuesID
                 LEFT OUTER JOIN Country ON L.iCountryID = Country.iCountryID
@@ -48,7 +47,28 @@ $SqlQuery = "SELECT
                     FROM 
                         StudentStatus 
                         LEFT OUTER JOIN ContactRelation ON StudentStatus.iStudentID=ContactRelation.iStudentID
+                        INNER JOIN LookupValues LV ON ContactRelation.iLV_RelationID = LV.iLookupValuesID
                     WHERE 
+                        LV.cName NOT IN (
+                            'Doctor', 
+                            'Mother & Father', 
+                            'Sister', 
+                            'Self', 
+                            'Sibling', 
+                            'Social Worker', 
+                            'Wife', 
+                            'Cousin', 
+                            'Nurse', 
+                            'Other', 
+                            'Brother', 
+                            'Staff Contact', 
+                            'Mr', 
+                            'Principal', 
+                            'Friend', 
+                            'Niece', 
+                            'Unknown', 
+                            'Nurse Practitioner'
+                            ) AND
                         C.iSchoolID NOT IN (
                             5850953, -- Major School
                             5850963, -- Manacowin School
@@ -56,10 +76,13 @@ $SqlQuery = "SELECT
                             5851066, -- Zinactive
                             5851067 -- Home Based 
                             )
-                        AND (StudentStatus.dInDate <=  getDate() + 1) AND
-                        ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
-                        (StudentStatus.lOutsideStatus = 0)) 
-                ORDER BY C.iContactID;"
+                        AND (StudentStatus.dInDate <=  getDate() + 1) 
+                        AND (
+                            (StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  
+                            AND (StudentStatus.lOutsideStatus = 0)
+                        ) 
+                ORDER BY 
+                    C.iContactID;"
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
