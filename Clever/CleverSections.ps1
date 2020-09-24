@@ -19,16 +19,16 @@ param (
 $SqlQuery = "SELECT
                 School.cCode AS School_id,
                 Class.iClassID AS Section_id,                
-                '' AS Teacher_id,
-                '' AS Teacher_2_id,
-                '' AS Teacher_3_id,
-                '' AS Teacher_4_id,
-                '' AS Teacher_5_id,
-                '' AS Teacher_6_id,
-                '' AS Teacher_7_id,
-                '' AS Teacher_8_id,
-                '' AS Teacher_9_id,
-                '' AS Teacher_10_id,
+                DefaultUserStaff.UF_2085 AS Teacher_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_2_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_3_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 2 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_4_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 3 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_5_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 4 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_6_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 5 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_7_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 6 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_8_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 7 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_9_id,
+                (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 8 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_10_id,
                 Class.cName AS Name,
                 Class.cSection AS Section_number,
                 CASE
@@ -50,10 +50,9 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN Course ON Class.iCourseID=Course.iCourseID
                 LEFT OUTER JOIN Grades ON Class.iLow_GradesID=Grades.iGradesID
                 LEFT OUTER JOIN Staff as DefaultStaff ON Class.iDefault_StaffID=DefaultStaff.iStaffID
-                LEFT OUTER JOIN UserStaff as DefaultUserStaff ON DefaultStaff.iStaffID=DefaultUserStaff.iStaffID
+                LEFT OUTER JOIN UserStaff as DefaultUserStaff ON DefaultStaff.iStaffID=DefaultUserStaff.iStaffID                
              ORDER BY  
                 Class.iClassID
-
 "
 
 # CSV Delimeter
