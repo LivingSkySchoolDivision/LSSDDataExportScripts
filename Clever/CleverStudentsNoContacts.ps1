@@ -43,12 +43,12 @@ $SqlQuery = "SELECT
                 '' AS Student_state,
                 '' AS Student_zip,
                 Student.mEmail AS Student_email,
-                ContactRelationship.cName AS Contact_relationship,
-                'family' AS Contact_type,
-                CONCAT(Contact.cFirstName, ' ', Contact.cLastName) AS Contact_name,
-                LTRIM(RTRIM(ContactLocation.cPhone)) AS Contact_phone,
-                Contact.mEmail AS Contact_email,
-                Contact.iContactID AS Contact_sis_id,
+                '' AS Contact_relationship,
+                '' AS Contact_type,
+                '' AS Contact_name,
+                '' AS Contact_phone,
+                '' AS Contact_email,
+                '' AS Contact_sis_id,
                 Student.mEmail AS Username,
                 '' AS Password,
                 '' AS Unweighted_gpa,
@@ -57,12 +57,8 @@ $SqlQuery = "SELECT
                 Student                
                 LEFT OUTER JOIN School as BaseSchool ON Student.iSchoolID=BaseSchool.iSchoolID
                 LEFT OUTER JOIN LookupValues as Gender ON Student.iLV_GenderID=Gender.iLookupValuesID
-                LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID
-                LEFT OUTER JOIN (SELECT * FROM ContactRelation WHERE lMail=1 OR Notify=1) AS ImportantContacts ON Student.iStudentID=ImportantContacts.iStudentID
-                LEFT OUTER JOIN LookupValues AS ContactRelationship ON ImportantContacts.iLV_RelationID=ContactRelationship.iLookupValuesID
-                LEFT OUTER JOIN Contact ON ImportantContacts.iContactID=Contact.iContactID
-                LEFT OUTER JOIN Location AS ContactLocation ON Contact.iLocationID=ContactLocation.iLocationID
-            WHERE 
+                LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID                
+            WHERE
                 Student.iStudentID in (
                     SELECT 
                         DISTINCT(iStudentID)
@@ -77,6 +73,7 @@ $SqlQuery = "SELECT
                     )
             ORDER BY 
                 Student.cStudentNumber
+
 "
 
 # CSV Delimeter
