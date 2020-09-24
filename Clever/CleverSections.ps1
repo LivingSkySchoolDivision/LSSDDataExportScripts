@@ -18,7 +18,7 @@ param (
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT
                 School.cCode AS School_id,
-                Class.iClassID AS Section_id,                
+                Class.iClassID AS Section_id,
                 DefaultUserStaff.UF_2085 AS Teacher_id,
                 (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_2_id,
                 (SELECT UserStaff.UF_2085 FROM ClassResource LEFT OUTER JOIN Staff ON ClassResource.iStaffID=Staff.iStaffID LEFT OUTER JOIN UserStaff ON Staff.iStaffID=UserStaff.iStaffID WHERE ClassResource.iClassID=Class.iClassID AND Staff.iStaffID<>Class.iDefault_StaffID ORDER BY iClassResourceID OFFSET 1 ROWS FETCH NEXT 1 ROWS ONLY) AS Teacher_3_id,
@@ -44,14 +44,17 @@ $SqlQuery = "SELECT
                 '' AS Term_name,
                 '' AS Term_start,
                 '' AS Term_end
-             FROM
+            FROM
                 Class
                 LEFT OUTER JOIN School ON Class.iSchoolID=School.iSchoolID
                 LEFT OUTER JOIN Course ON Class.iCourseID=Course.iCourseID
                 LEFT OUTER JOIN Grades ON Class.iLow_GradesID=Grades.iGradesID
                 LEFT OUTER JOIN Staff as DefaultStaff ON Class.iDefault_StaffID=DefaultStaff.iStaffID
-                LEFT OUTER JOIN UserStaff as DefaultUserStaff ON DefaultStaff.iStaffID=DefaultUserStaff.iStaffID                
-             ORDER BY  
+                LEFT OUTER JOIN UserStaff as DefaultUserStaff ON DefaultStaff.iStaffID=DefaultUserStaff.iStaffID
+            WHERE
+                Class.iDefault_StaffID > 0
+                AND (SELECT COUNT(iEnrollmentID) FROM Enrollment WHERE iClassID=Class.iClassID) > 0
+            ORDER BY
                 Class.iClassID
 "
 
@@ -99,7 +102,7 @@ $SqlConnection.close()
 foreach($DSTable in $SqlDataSet.Tables) {
     if (($PSVersionTable.PSVersion.Major -ge 7) -and ($QuoteAllColumns -eq $false)) {
         $DSTable | export-csv $OutputFileName -notypeinformation -Delimiter $Delimeter -UseQuotes AsNeeded
-    } else {        
+    } else {
         $DSTable | export-csv $OutputFileName -notypeinformation -Delimiter $Delimeter
     }
 }
