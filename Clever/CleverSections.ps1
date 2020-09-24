@@ -54,6 +54,7 @@ $SqlQuery = "SELECT
             WHERE
                 Class.iDefault_StaffID > 0
                 AND (SELECT COUNT(iEnrollmentID) FROM Enrollment WHERE iClassID=Class.iClassID) > 0
+                AND (LEN(DefaultUserStaff.UF_2085) > 0)
             ORDER BY
                 Class.iClassID
 "
