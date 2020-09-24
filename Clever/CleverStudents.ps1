@@ -58,16 +58,12 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN School as BaseSchool ON Student.iSchoolID=BaseSchool.iSchoolID
                 LEFT OUTER JOIN LookupValues as Gender ON Student.iLV_GenderID=Gender.iLookupValuesID
                 LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID
-                LEFT OUTER JOIN ContactRelation ON Student.iStudentID=ContactRelation.iStudentID
-                LEFT OUTER JOIN LookupValues AS ContactRelationship ON ContactRelation.iLV_RelationID=ContactRelationship.iLookupValuesID
-                LEFT OUTER JOIN Contact ON ContactRelation.iContactID=Contact.iContactID
+                LEFT OUTER JOIN (SELECT * FROM ContactRelation WHERE lMail=1 OR Notify=1) AS ImportantContacts ON Student.iStudentID=ImportantContacts.iStudentID
+                LEFT OUTER JOIN LookupValues AS ContactRelationship ON ImportantContacts.iLV_RelationID=ContactRelationship.iLookupValuesID
+                LEFT OUTER JOIN Contact ON ImportantContacts.iContactID=Contact.iContactID
                 LEFT OUTER JOIN Location AS ContactLocation ON Contact.iLocationID=ContactLocation.iLocationID
             WHERE 
-                (
-                    ContactRelation.lMail=1 
-                    OR ContactRelation.Notify=1
-                )
-                AND Student.iStudentID in (
+                Student.iStudentID in (
                     SELECT 
                         DISTINCT(iStudentID)
                     FROM 
@@ -81,7 +77,6 @@ $SqlQuery = "SELECT
                     )
             ORDER BY 
                 Student.cStudentNumber
-
 "
 
 # CSV Delimeter
