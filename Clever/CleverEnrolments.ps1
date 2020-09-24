@@ -24,12 +24,10 @@ $SqlQuery = "SELECT
                 Enrollment
                 LEFT OUTER JOIN Student on Enrollment.iStudentID=Student.iStudentID
                 LEFT OUTER JOIN School ON Enrollment.iSchoolID=School.iSchoolID
+                LEFT OUTER JOIN Class ON Enrollment.iClassID=Class.iClassID
             WHERE            
-                Enrollment.dInDate <= GETDATE()
-                AND (
-                    Enrollment.dOutDate < '1901-01-01' OR
-                    Enrollment.dOutDate >= GETDATE()
-                )
+                iLV_CompletionStatusID=0
+                AND Class.iDefault_StaffID > 0
             ORDER BY
                 Enrollment.iClassID
 "
