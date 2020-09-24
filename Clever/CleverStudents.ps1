@@ -44,7 +44,10 @@ $SqlQuery = "SELECT
                 '' AS Student_zip,
                 Student.mEmail AS Student_email,
                 ContactRelationship.cName AS Contact_relationship,
-                'family' AS Contact_type,
+                CASE
+                    WHEN (ContactRelationship.cName IS NOT NULL) THEN 'family'
+                    ELSE ''
+                END AS Contact_type,
                 CONCAT(Contact.cFirstName, ' ', Contact.cLastName) AS Contact_name,
                 LTRIM(RTRIM(ContactLocation.cPhone)) AS Contact_phone,
                 Contact.mEmail AS Contact_email,
