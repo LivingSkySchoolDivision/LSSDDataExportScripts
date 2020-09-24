@@ -2,6 +2,11 @@ param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
     [string]$ConfigFilePath
  )
+##############################################
+# About this file
+##############################################
+# The "staff.csv" file is designed for non-instructional staff such as secretaries, bus drivers, etc.
+# It is OK to be in both the staff list and the teacher list - The login pages are seperate, but the credentials should work on both.
 
 ##############################################
 # Script configuration                       #
@@ -45,7 +50,7 @@ $SchoolDANs = @{
     '0012'='5810211'; # BCS
     '0014'='5850201'; # Bready
     '0016'='5850401'; # Connaught
-    '0018'='5910111'; # CKES
+    '0018'='5910111'; # CKES (Closed)
     '0020'='6410721'; # HCES
     '0022'='5850501'; # Lawrence
     '0024'='5850601'; # McKitrick
@@ -73,6 +78,7 @@ $SchoolDANs = @{
     '0516'='5850401'; # Connaught
     '0616'='5850401'; # Connaught
     '0624'='5850601'; # McKitrick
+    '0090'='5850801'; # LSSD Virtual
 }
 
 # CSV Delimeter
