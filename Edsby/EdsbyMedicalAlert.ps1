@@ -13,16 +13,24 @@ param (
 $SqlQuery = "SELECT 
                 S.iSchoolID AS SchoolID, 
                 CONCAT('STUDENT-',S.iStudentID) AS StudentGUID,
-                '1' AS Severity,
-                'Medical' as Alert,
+                CASE WHEN 
+					SP.dExpiryDate > GETDATE() OR SP.dExpiryDate = '1900-01-01' THEN '4' ELSE '3' 
+				END AS Severity,
+                CASE WHEN
+                    SP.dExpiryDate > GETDATE() OR SP.dExpiryDate = '1900-01-01' THEN 'Education' ELSE 'Medical' 
+                END AS Alert,
                 CONCAT('MED-',S.iStudentID) as RecordID,
-                S.mMedical AS MedicalAlertString,
+                CASE WHEN 
+                    SP.dExpiryDate > GETDATE() OR SP.dExpiryDate = '1900-01-01' THEN SP.cRestrictionDetails ELSE S.mMedical 
+                END AS MedicalAlertString,
                 'Active' as Status
             FROM 
                 Student S
                 LEFT OUTER JOIN StudentStatus SS ON S.iStudentID = SS.iStudentID
+                LEFT OUTER JOIN StudentProtection SP ON S.iStudentID = SP.iStudentID
             WHERE 
-                S.mMedical <> '' AND
+                (S.mMedical != '' OR
+                SP.cRestrictionDetails != '') AND
                 (SS.dInDate <= getDate() + 1) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
                 S.iSchoolID NOT IN (5851067) --HomeSchool;"
