@@ -12,7 +12,7 @@ param (
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
 $SqlQuery = "SELECT 
                 S.iSchoolID AS SchoolID, 
-                CONCAT('STUDENT-',S.iStudentID) AS StudentGUID,
+                CONCAT('STUDENT-',S.iStudentID) AS GUID,
                 CASE WHEN 
 					SP.dExpiryDate > GETDATE() OR SP.dExpiryDate = '1900-01-01' THEN '4' ELSE '3' 
 				END AS Severity,
