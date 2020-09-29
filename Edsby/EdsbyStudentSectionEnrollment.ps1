@@ -23,20 +23,20 @@ $SqlQuery = "SELECT
                 T.lDaily = 1 AND
                 (SS.dInDate <=  getDate() + 1) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() }))
-            
+
             UNION 
                 ALL
-            
+
             SELECT 
                 E.iSchoolID as SchoolID,
                 CONCAT(E.iSchoolID,'-',E.iClassID) as SectionGUID,
                 CONCAT('STUDENT-',E.iStudentID) as StudentGUID
             FROM
                 Enrollment E
-				INNER JOIN CLASS C ON E.iClassID = C.iClassID
+                INNER JOIN CLASS C ON E.iClassID = C.iClassID
             WHERE
-                iLV_CompletionStatusID=0 AND
-				C.iLV_SessionID != '4720' --Session set to No Edsby;"
+                (iLV_CompletionStatusID=0 OR iLV_CompletionStatusID=3568) AND
+                C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 
 # CSV Delimeter
