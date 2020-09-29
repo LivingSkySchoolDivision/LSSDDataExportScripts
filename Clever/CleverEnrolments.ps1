@@ -26,7 +26,7 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN School ON Enrollment.iSchoolID=School.iSchoolID
                 LEFT OUTER JOIN Class ON Enrollment.iClassID=Class.iClassID
             WHERE            
-                iLV_CompletionStatusID=0
+                (iLV_CompletionStatusID=0 OR iLV_CompletionStatusID=3568)
                 AND Class.iDefault_StaffID > 0
             ORDER BY
                 Enrollment.iClassID
