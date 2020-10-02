@@ -9,7 +9,7 @@ function Get-CSV {
         [Parameter(Mandatory=$true)][String] $CSVFile
     )
 
-    return import-csv $CSVFile -header('SchoolID','IncidentID','IncidentDate','UpdateDate','StudentFirstName','StudentLastName','StudentGUID','StudentID','StudentMinistryID','StudentGrade','PeriodIDs','MeetingID','MeetingStartTime','MeetingEndTime','Class','ClassGUID','TeacherNames','TeacherGUIDs','Room','Code','ReasonCode','Reason','Comment','Tags') | Select -skip 2
+    return import-csv $CSVFile | Select -skip 2
 }
 
 # CSV Delimeter
@@ -38,7 +38,7 @@ Get-ChildItem .\*.csv | ForEach-Object {
         $fileOutputRows += $record                
     }            
 
-    $fileOutputRows | ForEach-Object {[PSCustomObject]$_} | export-csv $fullOutputFilePath -notypeinformation -Delimiter $Delimeter
+    $fileOutputRows | ForEach-Object {[PSCustomObject]$_} | export-csv $fullOutputFilePath -Append -notypeinformation -Delimiter $Delimeter
 }
 Set-Location $CurrentLocation
 
