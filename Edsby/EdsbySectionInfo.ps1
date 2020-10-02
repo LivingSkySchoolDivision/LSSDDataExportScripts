@@ -72,7 +72,7 @@ $SqlQuery = "SELECT DISTINCT
                 '' AS GradeLevel,
                 SUB.cName AS Subject,
                 CO.iCourseID AS CourseCode,
-                CO.cName AS CourseTitle,
+                C.cName AS CourseTitle,
                 CASE WHEN T.lDaily = 0 THEN 1  ELSE 0 END AS Attendance,
                 '0' AS ScheduleMode,
                 T.iTrackID AS ScheduleID,
