@@ -85,7 +85,8 @@ function Convert-AttendanceReason {
 
 function Convert-AttendanceStatus {
     param(
-        [Parameter(Mandatory=$true)] $InputString   
+        [Parameter(Mandatory=$true)] $AttendanceCode,
+        [Parameter(Mandatory=$true)] $AttendanceReasonCode   
     )
 
     # We'll return -1 as something we should ignore, and then ignore those rows later in the program
@@ -100,11 +101,27 @@ function Convert-AttendanceStatus {
     # 6     Leave Early
     # 7     Division (School closures)
 
-    if ($InputString -like 'absent*') { return 1 }
-    if ($InputString -like 'excused*') { return 1 }
-    if ($InputString -like 'sanctioned*') { return 4 }
-    if ($InputString -like 'late*') { return 3 }
-    if ($InputString -like 'leave*') { return 6 }
+    if ($AttendanceCode -like 'absent*') { return 2 }  # Unexplained absence 
+    if ($AttendanceCode -like 'sanctioned*') { return 4 }
+    if ($AttendanceCode -like 'late*') { return 3 }
+
+    # Excused might mean absent or leave early
+    if ($AttendanceCode -like 'excused*') { 
+        if ($null -ne $AttendanceReasonCode) {
+            if ($AttendanceReasonCode -like 'le-*') {
+                return 6
+            } 
+            if ($AttendanceReasonCode -like 'la-*') {
+                return 3
+            } 
+            if ($AttendanceReasonCode -like 's-*') {
+                return 4
+            }             
+            return 2
+        }        
+    }
+
+
     return -1
 }
 
@@ -168,6 +185,7 @@ function Get-SQLData {
     return $null
 }
 
+
 function Convert-BlockID {
     param(
         [Parameter(Mandatory=$true)][int] $EdsbyPeriodsID, 
@@ -211,7 +229,7 @@ if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
     Throw "Config file not found. Specify using -ConfigFilePath. Defaults to config.xml in the directory above where this script is run from."
 }
 $configXML = [xml](Get-Content $AdjustedConfigFilePath)
-$DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionString
+$DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
 
 # Check if the import file exists before going any further
 if (Test-Path $InputFileName) 
@@ -220,7 +238,6 @@ if (Test-Path $InputFileName)
     write-output "Couldn't load the input file! Quitting."
     exit
 }
-
 
 ##############################################
 # Collect required info from the SL database #
@@ -246,9 +263,10 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     # Copy over the easy fields    
     $ConvertedObj.iSchoolID = [int]$InputRow.SchoolID
     $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate
-    #$ConvertedObj.mComment = [string]$InputRow.Comment.Trim()
+    $ConvertedObj.mComment = [string]$InputRow.Comment.Trim()
     $ConvertedObj.mTags = [string]$InputRow.Tags.Trim()
     $ConvertedObj.cIncidentID = [string]$InputRow.IncidentID
+    $ConvertedObj.dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
     
     # Convert fields that we can convert using just this file
     $ConvertedObj.iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
@@ -258,7 +276,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     # Convert fields using data from SchoolLogic
     # iBlockNumber
     $ConvertedObj.iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.PeriodIDs) -ClassName $([string]$InputRow.Class) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
-    $ConvertedObj.iAttendanceStatusID = Convert-AttendanceStatus -InputString $([string]$InputRow.Code)
+    $ConvertedObj.iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
     $ConvertedObj.iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
 
     # Ignore rows that converted badly
@@ -267,11 +285,37 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     }
 }
 
-
-$ConvertedRows | Foreach-Object {[PSCustomObject]$_}  | Format-Table
+#$ConvertedRows | Foreach-Object {[PSCustomObject]$_}  | Format-Table
 
 ##############################################
 # Import into SQL                            #
 ##############################################
 
+# Set up the SQL connection
+$SqlConnection = new-object System.Data.SqlClient.SqlConnection
+$SqlConnection.ConnectionString = $DBConnectionString
+
+foreach ($NewRecord in $ConvertedRows) {
+    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated) 
+                                    VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED);"
+    $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@STATUSID",$NewRecord.iAttendanceStatusID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@REASONID",$NewRecord.iAttendanceReasonsID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@DDATE",$NewRecord.dDate) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@CLASSID",$NewRecord.iClassID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@MINUTES",0) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$NewRecord.mComment) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@ISTAFFID",$NewRecord.iStaffID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@ISCHOOLID",$NewRecord.iSchoolID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@EDSBYINCIDENTID",$NewRecord.cIncidentID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$NewRecord.mTags) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$NewRecord.dEdsbyLastUpdate) | Out-Null
+    $SqlCommand.Connection = $SqlConnection
+    
+    $SqlConnection.open()
+    $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+    $SqlConnection.close()
+}
 
