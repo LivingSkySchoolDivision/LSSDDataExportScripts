@@ -125,6 +125,23 @@ function Convert-AttendanceStatus {
     return -1
 }
 
+Function Get-Hash 
+{ 
+    param
+    (
+        [String] $String
+    )
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($String)
+    $hashfunction = [System.Security.Cryptography.HashAlgorithm]::Create('SHA1')
+    $StringBuilder = New-Object System.Text.StringBuilder 
+    $hashfunction.ComputeHash($bytes) | 
+    ForEach-Object { 
+        $null = $StringBuilder.Append($_.ToString("x2")) 
+    } 
+  
+    return $StringBuilder.ToString() 
+}
+
 function Convert-SectionID {
     param(
         [Parameter(Mandatory=$true)] $InputString,
@@ -218,6 +235,8 @@ function Convert-BlockID {
 # Script initialization                      #
 ##############################################
 
+Write-Output "Loading config file..."
+
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
 if ($AdjustedConfigFilePath.Length -le 0) {
@@ -243,6 +262,8 @@ if (Test-Path $InputFileName)
 # Collect required info from the SL database #
 ##############################################
 
+Write-Output "Loading required data from SchoolLogic DB..."
+
 $SQLQuery_HomeroomBlocks = "SELECT iAttendanceBlocksID as ID, iBlockNumber, cName FROM AttendanceBlocks;"
 $SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Blocks"
 
@@ -254,6 +275,8 @@ $PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQL
 # Process the file                           #
 ##############################################
 
+Write-Output "Processing input file..."
+
 $ConvertedRows = @()
 
 foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
@@ -262,11 +285,12 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 
     # Copy over the easy fields    
     $ConvertedObj.iSchoolID = [int]$InputRow.SchoolID
-    $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate
+    $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate    
     $ConvertedObj.mComment = [string]$InputRow.Comment.Trim()
     $ConvertedObj.mTags = [string]$InputRow.Tags.Trim()
     $ConvertedObj.cIncidentID = [string]$InputRow.IncidentID
     $ConvertedObj.dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
+    $ConvertedObj.iMeetingID = [int]$InputRow.MeetingID
     
     # Convert fields that we can convert using just this file
     $ConvertedObj.iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
@@ -279,17 +303,41 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     $ConvertedObj.iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
     $ConvertedObj.iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
 
+    $ConvertedObj.Thumbprint = Get-Hash "$($ConvertedObj.iSchoolID)-$($ConvertedObj.iStudentID)-$($ConvertedObj.dDate.ToString("yyyyMMdd"))-$($ConvertedObj.iMeetingID)"
+    $ConvertedObj.ValueHash = Get-Hash "$($ConvertedObj.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($ConvertedObj.mComment)-$($ConvertedObj.iAttendanceStatusID)-$($ConvertedObj.iAttendanceReasonsID)"
+
     # Ignore rows that converted badly
     if ($ConvertedObj.iAttendanceStatusID -ne -1) {
         $ConvertedRows += $ConvertedObj
     }
 }
 
+#foreach ($NewRecord in $ConvertedRows) {
+#    write-host "$($NewRecord.Thumbprint)"
+#}
+
 #$ConvertedRows | Foreach-Object {[PSCustomObject]$_}  | Format-Table
+
+##############################################
+# Compare to database                        #
+##############################################
+
+# Lets assume that we can identify an absence in the db by:
+#  Date
+#  Student ID number
+#  Class or homeroom ID
+#  Edsby incident ID (can we trust this?)
+
+# Which entries do we need to add?
+# Which entries do we need to update?
+# Which entries do we need to remove entirely?
+
 
 ##############################################
 # Import into SQL                            #
 ##############################################
+
+Write-Output "Inserting into database..."
 
 # Set up the SQL connection
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
@@ -297,8 +345,8 @@ $SqlConnection.ConnectionString = $DBConnectionString
 
 foreach ($NewRecord in $ConvertedRows) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated) 
-                                    VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED);"
+    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash) 
+                                    VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
     $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@STATUSID",$NewRecord.iAttendanceStatusID) | Out-Null
@@ -312,6 +360,9 @@ foreach ($NewRecord in $ConvertedRows) {
     $SqlCommand.Parameters.AddWithValue("@EDSBYINCIDENTID",$NewRecord.cIncidentID) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$NewRecord.mTags) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$NewRecord.dEdsbyLastUpdate) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@MEETINGID",$NewRecord.iMeetingID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@THUMB",$NewRecord.Thumbprint) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@VALHASH",$NewRecord.ValueHash) | Out-Null
     $SqlCommand.Connection = $SqlConnection
     
     $SqlConnection.open()
