@@ -1,7 +1,6 @@
 param (
     [Parameter(Mandatory=$true)][string]$EdsbyLinkOutDirectory,
-    [Parameter(Mandatory=$true)][string]$OutputFileName,
-    [string]$ConfigFilePath
+    [Parameter(Mandatory=$true)][string]$OutputFileName
  )
 
 function Get-CSV {
@@ -41,4 +40,3 @@ Get-ChildItem .\*.csv | ForEach-Object {
     $fileOutputRows | ForEach-Object {[PSCustomObject]$_} | export-csv $fullOutputFilePath -Append -notypeinformation -Delimiter $Delimeter
 }
 Set-Location $CurrentLocation
-
