@@ -206,15 +206,24 @@ function Convert-BlockID {
     return -1
 }
 
+function Write-Log
+{
+    param(
+        [Parameter(Mandatory=$true)] $Message
+    )
+
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss K")> $Message"
+}
+
 ###########################################################################
 # Script initialization                                                   #
 ###########################################################################
 
 if ($DryRun -eq $true) {
-    write-output "Performing dry run - will not actually commit changes to the database"
+    Write-Log "Performing dry run - will not actually commit changes to the database"
 }
 
-Write-Output "Loading config file..."
+Write-Log "Loading config file..."
 
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
@@ -235,7 +244,7 @@ $DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
 if (Test-Path $InputFileName)
 {
 } else {
-    write-output "Couldn't load the input file! Quitting."
+    Write-Log "Couldn't load the input file! Quitting."
     exit
 }
 
@@ -243,7 +252,7 @@ if (Test-Path $InputFileName)
 # Collect required info from the SL database                              #
 ###########################################################################
 
-Write-Output "Loading required data from SchoolLogic DB..."
+Write-Log "Loading required data from SchoolLogic DB..."
 
 $SQLQuery_HomeroomBlocks = "SELECT iAttendanceBlocksID as ID, iBlockNumber, cName FROM AttendanceBlocks;"
 $SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Blocks"
@@ -256,7 +265,7 @@ $PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQL
 # Process the file                                                        #
 ###########################################################################
 
-Write-Output "Processing input file..."
+Write-Log "Processing input file..."
 
 $AttendanceToImport = @{}
 
@@ -310,16 +319,16 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 
         if ($ExistingRecord.ValueHash -eq $NewRecord.ValueHash) {
             # Do nothing - the values are the same, so just ignore this duplicate.
-            write-host "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
+            Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
         } else {
             # Trust the one updated the most recently
             if ($NewRecord.dEdsbyLastUpdate -gt $ExistingRecord.dEdsbyLastUpdate) {
                 # Replace the existing record with a newer one
                 $AttendanceToImport[$($NewRecord.Thumbprint)] = $NewRecord
-                write-host "Overriding older record with newer one for $($NewRecord.Thumbprint)"
+                Write-Log "Overriding older record with newer one for $($NewRecord.Thumbprint)"
             } else {
                 # Do nothing - Ignore the older record
-                write-host "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
+                Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
             }
         }
     }
@@ -335,7 +344,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 # Which entries do we need to update?
 # Which entries do we need to remove entirely?
 
-write-output "Caching existing attendance to compare to..."
+Write-Log "Caching existing attendance to compare to..."
 
 $SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance WHERE lEdsbySyncDoNotTouch=0 ORDER BY cThumbprint;"  
 $ExistingAttendance_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ExistingAttendance
@@ -360,7 +369,7 @@ $RecordsToInsert = @()
 $RecordsToUpdate = @()
 $ThumbprintsToDelete = @()
 
-write-output "Finding records to insert and update..."
+Write-Log "Finding records to insert and update..."
 foreach($ImportedRecord in $AttendanceToImport.Values)
 {
     # Does this thumbprint exist in our table?
@@ -385,7 +394,7 @@ foreach($ImportedRecord in $AttendanceToImport.Values)
 }
 
 if ($PerformDeletes -eq $true) {
-    write-output "Finding records to delete..."
+    Write-Log "Finding records to delete..."
     # Find attendance records that have been deleted
     foreach($ExistingThumbprint in $ExistingAttendance.Keys)
     {
@@ -398,9 +407,9 @@ if ($PerformDeletes -eq $true) {
         }
     }
 }
-write-output "To insert: $($RecordsToInsert.Count)"
-write-output "To update: $($RecordsToUpdate.Count)"
-write-output "To delete: $($ThumbprintsToDelete.Count)"
+Write-Log "To insert: $($RecordsToInsert.Count)"
+Write-Log "To update: $($RecordsToUpdate.Count)"
+Write-Log "To delete: $($ThumbprintsToDelete.Count)"
 
 
 
@@ -413,7 +422,7 @@ write-output "To delete: $($ThumbprintsToDelete.Count)"
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
-write-output "Inserting $($RecordsToInsert.Count) records..."
+Write-Log "Inserting $($RecordsToInsert.Count) records..."
 foreach ($NewRecord in $RecordsToInsert) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
     $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
@@ -443,7 +452,7 @@ foreach ($NewRecord in $RecordsToInsert) {
     $SqlConnection.close()
 }
 
-write-output "Updating $($RecordsToUpdate.Count) records..."
+Write-Log "Updating $($RecordsToUpdate.Count) records..."
 foreach ($UpdatedRecord in $RecordsToInsert) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
     $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
@@ -463,7 +472,7 @@ foreach ($UpdatedRecord in $RecordsToInsert) {
 }
 
 if ($PerformDeletes -eq $true) {
-    write-output "Deleting $($ThumbprintsToDelete.Count) records..."
+    Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
     foreach ($ThumbToDelete in $ThumbprintsToDelete) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
         $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
