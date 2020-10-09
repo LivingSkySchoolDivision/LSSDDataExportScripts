@@ -3,9 +3,9 @@ param (
     [string]$ConfigFilePath
  )
 
-##############################################
-# How this script works                      #
-##############################################
+###########################################################################
+# How this script works                                                   #
+###########################################################################
 
 # Import
 # Processing
@@ -14,25 +14,25 @@ param (
 # Insert new attendance entries
 # Delete old attendance entries
 
-##############################################
-# Data we need to convert                    #
-##############################################
+###########################################################################
+# Data we need to convert                                                 #
+###########################################################################
 
 # iBlockNumber
 # iEnrollmentID (maybe)
 # iClassID, iStudentID, iStaffID (easily parsed from the input file)
 # Attendance statuses and reasons
 
-##############################################
-# Data we need from SchoolLogic              #
-##############################################
+###########################################################################
+# Data we need from SchoolLogic                                           #
+###########################################################################
 
 # iAttendanceBlockIds, for period attendance block numbers
 # iBlockIDs for daily attendance block numbers
 
-##############################################
-# Functions                                  #
-##############################################
+###########################################################################
+# Functions                                                               #
+###########################################################################
 function Get-CSV {
     param(
         [Parameter(Mandatory=$true)][String] $CSVFile
@@ -43,9 +43,9 @@ function Get-CSV {
 
 function Convert-AttendanceReason {
     param(
-        [Parameter(Mandatory=$true)] $InputString   
+        [Parameter(Mandatory=$true)] $InputString
     )
-    
+
     # We'll return -1 as something we should ignore, and then ignore those rows later in the program
 
     # Could pull from the database, but im in a crunch, so this is getting manually correlated for now.
@@ -74,19 +74,19 @@ function Convert-AttendanceReason {
     #   LE-Med
     #   LE-Exp
     #   LE-UnExp
-        
+
     if ($InputString -like '*-Exp') { return 98 }
     if ($InputString -like '*-Med') { return 100 }
     if ($InputString -like '*-Curr') { return 103 }
     if ($InputString -like '*-XCurr') { return 101 }
-    
+
     return 0
 }
 
 function Convert-AttendanceStatus {
     param(
         [Parameter(Mandatory=$true)] $AttendanceCode,
-        [Parameter(Mandatory=$true)] $AttendanceReasonCode   
+        [Parameter(Mandatory=$true)] $AttendanceReasonCode
     )
 
     # We'll return -1 as something we should ignore, and then ignore those rows later in the program
@@ -101,72 +101,72 @@ function Convert-AttendanceStatus {
     # 6     Leave Early
     # 7     Division (School closures)
 
-    if ($AttendanceCode -like 'absent*') { return 2 }  # Unexplained absence 
+    if ($AttendanceCode -like 'absent*') { return 2 }  # Unexplained absence
     if ($AttendanceCode -like 'sanctioned*') { return 4 }
     if ($AttendanceCode -like 'late*') { return 3 }
 
     # Excused might mean absent or leave early
-    if ($AttendanceCode -like 'excused*') { 
+    if ($AttendanceCode -like 'excused*') {
         if ($null -ne $AttendanceReasonCode) {
             if ($AttendanceReasonCode -like 'le-*') {
                 return 6
-            } 
+            }
             if ($AttendanceReasonCode -like 'la-*') {
                 return 3
-            } 
+            }
             if ($AttendanceReasonCode -like 's-*') {
                 return 4
-            }             
+            }
             return 2
-        }        
+        }
     }
 
 
     return -1
 }
 
-Function Get-Hash 
-{ 
+Function Get-Hash
+{
     param
     (
         [String] $String
     )
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($String)
     $hashfunction = [System.Security.Cryptography.HashAlgorithm]::Create('SHA1')
-    $StringBuilder = New-Object System.Text.StringBuilder 
-    $hashfunction.ComputeHash($bytes) | 
-    ForEach-Object { 
-        $null = $StringBuilder.Append($_.ToString("x2")) 
-    } 
-  
-    return $StringBuilder.ToString() 
+    $StringBuilder = New-Object System.Text.StringBuilder
+    $hashfunction.ComputeHash($bytes) |
+    ForEach-Object {
+        $null = $StringBuilder.Append($_.ToString("x2"))
+    }
+
+    return $StringBuilder.ToString()
 }
 
 function Convert-SectionID {
     param(
         [Parameter(Mandatory=$true)] $InputString,
         [Parameter(Mandatory=$true)] $SchoolID,
-        [Parameter(Mandatory=$true)] $ClassName      
+        [Parameter(Mandatory=$true)] $ClassName
     )
 
     if ($ClassName -like 'homeroom*') {
         return 0
     } else {
         return $InputString.Replace("$SchoolID-","")
-    }    
+    }
 }
 
 function Convert-StudentID {
     param(
-        [Parameter(Mandatory=$true)] $InputString     
+        [Parameter(Mandatory=$true)] $InputString
     )
-   
+
     return [int]$InputString.Replace("STUDENT-","")
 }
 
 function Convert-StaffID {
     param(
-        [Parameter(Mandatory=$true)] $InputString    
+        [Parameter(Mandatory=$true)] $InputString
     )
 
     # We might get a list of staff, in which case we should parse it and just return the first one
@@ -177,8 +177,8 @@ function Convert-StaffID {
 
 function Get-SQLData {
     param(
-        [Parameter(Mandatory=$true)] $SQLQuery, 
-        [Parameter(Mandatory=$true)] $ConnectionString    
+        [Parameter(Mandatory=$true)] $SQLQuery,
+        [Parameter(Mandatory=$true)] $ConnectionString
     )
 
     # Set up the SQL connection
@@ -195,7 +195,7 @@ function Get-SQLData {
     $SqlConnection.open()
     $SqlAdapter.Fill($SqlDataSet)
     $SqlConnection.close()
-  
+
     foreach($DSTable in $SqlDataSet.Tables) {
         return $DSTable
     }
@@ -205,10 +205,10 @@ function Get-SQLData {
 
 function Convert-BlockID {
     param(
-        [Parameter(Mandatory=$true)][int] $EdsbyPeriodsID, 
-        [Parameter(Mandatory=$true)][string] $ClassName, 
+        [Parameter(Mandatory=$true)][int] $EdsbyPeriodsID,
+        [Parameter(Mandatory=$true)][string] $ClassName,
         [Parameter(Mandatory=$true)] $PeriodBlockDataTable,
-        [Parameter(Mandatory=$true)] $DailyBlockDataTable    
+        [Parameter(Mandatory=$true)] $DailyBlockDataTable
     )
 
     # Determine if this is a homeroom or a period class
@@ -220,20 +220,20 @@ function Convert-BlockID {
 
     if ($ClassName -like 'homeroom*') {
         $Block = $DailyBlockDataTable.Where({ $_.ID -eq $EdsbyPeriodsID })
-    } else {        
+    } else {
         $Block = $PeriodBlockDataTable.Where({ $_.ID -eq $EdsbyPeriodsID })
     }
-    
+
     if ($null -ne $Block) {
         return [int]$($Block.iBlockNumber)
     }
 
     return -1
-} 
+}
 
-##############################################
-# Script initialization                      #
-##############################################
+###########################################################################
+# Script initialization                                                   #
+###########################################################################
 
 Write-Output "Loading config file..."
 
@@ -250,17 +250,19 @@ if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
 $configXML = [xml](Get-Content $AdjustedConfigFilePath)
 $DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
 
-# Check if the import file exists before going any further
-if (Test-Path $InputFileName) 
-{    
+###########################################################################
+# Check if the import file exists before going any further                #
+###########################################################################
+if (Test-Path $InputFileName)
+{
 } else {
     write-output "Couldn't load the input file! Quitting."
     exit
 }
 
-##############################################
-# Collect required info from the SL database #
-##############################################
+###########################################################################
+# Collect required info from the SL database                              #
+###########################################################################
 
 Write-Output "Loading required data from SchoolLogic DB..."
 
@@ -271,9 +273,9 @@ $SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Block
 $HomeroomBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_HomeroomBlocks
 $PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_PeriodBlocks
 
-##############################################
-# Process the file                           #
-##############################################
+###########################################################################
+# Process the file                                                        #
+###########################################################################
 
 Write-Output "Processing input file..."
 
@@ -283,15 +285,15 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 {
     $ConvertedObj = @{}
 
-    # Copy over the easy fields    
+    # Copy over the easy fields
     $ConvertedObj.iSchoolID = [int]$InputRow.SchoolID
-    $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate    
+    $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate
     $ConvertedObj.mComment = [string]$InputRow.Comment.Trim()
     $ConvertedObj.mTags = [string]$InputRow.Tags.Trim()
     $ConvertedObj.cIncidentID = [string]$InputRow.IncidentID
     $ConvertedObj.dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
     $ConvertedObj.iMeetingID = [int]$InputRow.MeetingID
-    
+
     # Convert fields that we can convert using just this file
     $ConvertedObj.iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
     $ConvertedObj.iStaffID = Convert-StaffID -InputString $([string]$InputRow.TeacherGUIDs)
@@ -303,8 +305,8 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     $ConvertedObj.iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
     $ConvertedObj.iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
 
-    $ConvertedObj.Thumbprint = Get-Hash "$($ConvertedObj.iSchoolID)-$($ConvertedObj.iStudentID)-$($ConvertedObj.dDate.ToString("yyyyMMdd"))-$($ConvertedObj.iMeetingID)"
-    $ConvertedObj.ValueHash = Get-Hash "$($ConvertedObj.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($ConvertedObj.mComment)-$($ConvertedObj.iAttendanceStatusID)-$($ConvertedObj.iAttendanceReasonsID)"
+    $ConvertedObj.Thumbprint = Get-Hash "$($ConvertedObj.iSchoolID)-$($ConvertedObj.iStudentID)-$($ConvertedObj.dDate.ToString("yyyyMMdd"))-$($ConvertedObj.iClassID)-$($ConvertedObj.iMeetingID)-$($ConvertedObj.iAttendanceStatusID)"
+    $ConvertedObj.ValueHash = Get-Hash "$($ConvertedObj.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($ConvertedObj.mComment)-$($ConvertedObj.iAttendanceReasonsID)-$($ConvertedObj.mTags)"
 
     # Ignore rows that converted badly
     if ($ConvertedObj.iAttendanceStatusID -ne -1) {
@@ -312,30 +314,103 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     }
 }
 
-#foreach ($NewRecord in $ConvertedRows) {
-#    write-host "$($NewRecord.Thumbprint)"
-#}
 
-#$ConvertedRows | Foreach-Object {[PSCustomObject]$_}  | Format-Table
+###########################################################################
+# Sanity check                                                            #
+###########################################################################
 
-##############################################
-# Compare to database                        #
-##############################################
 
-# Lets assume that we can identify an absence in the db by:
-#  Date
-#  Student ID number
-#  Class or homeroom ID
-#  Edsby incident ID (can we trust this?)
+
+###########################################################################
+# Compare to database                                                     #
+###########################################################################
+
+# Get a list of thumbprints and value hashes from the database, to compare
 
 # Which entries do we need to add?
 # Which entries do we need to update?
 # Which entries do we need to remove entirely?
 
+write-output "Caching existing attendance to compare to..."
 
-##############################################
-# Import into SQL                            #
-##############################################
+$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance ORDER BY cThumbprint;" # WHERE lEdsbySyncDoNotTouch=0
+$ExistingAttendance_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ExistingAttendance
+
+$ExistingAttendance = @{}
+foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
+{
+    if ($null -ne $ExistingAttendanceRow.cThumbprint) {
+        #$ExistingAttendance += @{ $ExistingAttendanceRow.cThumbprint = $ExistingAttendanceRow.cValueHash }
+
+        if ($ExistingAttendance.ContainsKey($ExistingAttendanceRow.cThumbprint) -eq $false) {
+            $ExistingAttendance.Add($ExistingAttendanceRow.cThumbprint, @())
+        }
+        $ExistingAttendance[$ExistingAttendanceRow.cThumbprint] += ($ExistingAttendanceRow.cValueHash)
+    }
+}
+
+
+###########################################################################
+# Sanity check                                                            #
+###########################################################################
+
+# There can (and will) be duplicate absences for the same student/class/period, because of how attendance is entered.
+# Find these duplicates, and choose the most recently entered entry as the one that's most accurate.
+
+# Find existing records that have duplicates
+foreach($ExistingRecord in $ExistingAttendance.keys) {
+    if ($ExistingAttendance[$ExistingRecord].Count -gt 1)
+    {
+        $ExistingRecord
+    }
+}
+
+# Find records that we're importing that have duplicates
+
+exit
+
+# Now go through attendance we're importing, and see what bucket it should be in
+$RecordsToInsert = @()
+$RecordsToDelete = @()
+$RecordsToUpdate = @()
+
+foreach($ImportedRecord in $ConvertedRows)
+{
+    # Does this thumbprint exist in our table?
+    # If not, insert it
+    # If yes, check it's value hash - does it match?
+    #  If not, update it
+    #  If yes, no work needs to be done
+
+    if ($ExistingAttendance.ContainsKey($ImportedRecord.Thumbprint))
+    {
+        if ($ExistingAttendance[$ImportedRecord.Thumbprint] -eq $ImportedRecord.ValueHash)
+        {
+            $RecordsToUpdate += $ImportedRecord
+        }
+    } else {
+        $RecordsToInsert += $ImportedRecord
+    }
+}
+
+# Find attendance records that have been deleted
+foreach($ExistingRecord in $ExistingAttendance)
+{
+    # Does this thumbprint exist in the data we're importing?
+    #  If yes, do nothing
+    #  If no, flag for removal
+}
+
+write-output "To insert: $($RecordsToInsert.Count)"
+write-output "To update: $($RecordsToUpdate.Count)"
+write-output "To delete: $($RecordsToDelete.Count)"
+
+
+exit
+
+###########################################################################
+# Import into SQL                                                         #
+###########################################################################
 
 Write-Output "Inserting into database..."
 
@@ -345,7 +420,7 @@ $SqlConnection.ConnectionString = $DBConnectionString
 
 foreach ($NewRecord in $ConvertedRows) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash) 
+    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
                                     VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
     $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
@@ -364,7 +439,7 @@ foreach ($NewRecord in $ConvertedRows) {
     $SqlCommand.Parameters.AddWithValue("@THUMB",$NewRecord.Thumbprint) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@VALHASH",$NewRecord.ValueHash) | Out-Null
     $SqlCommand.Connection = $SqlConnection
-    
+
     $SqlConnection.open()
     $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
     $SqlConnection.close()
