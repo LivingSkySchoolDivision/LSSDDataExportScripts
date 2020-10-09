@@ -453,7 +453,7 @@ foreach ($NewRecord in $RecordsToInsert) {
 }
 
 Write-Log "Updating $($RecordsToUpdate.Count) records..."
-foreach ($UpdatedRecord in $RecordsToInsert) {
+foreach ($UpdatedRecord in $RecordsToUpdate) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
     $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
     $SqlCommand.Parameters.AddWithValue("@REASONID",$UpdatedRecord.iAttendanceReasonsID) | Out-Null
