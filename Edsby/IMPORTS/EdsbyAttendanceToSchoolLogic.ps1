@@ -1,34 +1,9 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
-    [string]$ConfigFilePath
+    [string]$ConfigFilePath,
+    [bool]$PerformDeletes,
+    [bool]$DryRun
  )
-
-###########################################################################
-# How this script works                                                   #
-###########################################################################
-
-# Import
-# Processing
-# Referencing SchoolLogic data
-# Find changes between our list and the absences table in SchoolLogic
-# Insert new attendance entries
-# Delete old attendance entries
-
-###########################################################################
-# Data we need to convert                                                 #
-###########################################################################
-
-# iBlockNumber
-# iEnrollmentID (maybe)
-# iClassID, iStudentID, iStaffID (easily parsed from the input file)
-# Attendance statuses and reasons
-
-###########################################################################
-# Data we need from SchoolLogic                                           #
-###########################################################################
-
-# iAttendanceBlockIds, for period attendance block numbers
-# iBlockIDs for daily attendance block numbers
 
 ###########################################################################
 # Functions                                                               #
@@ -235,6 +210,10 @@ function Convert-BlockID {
 # Script initialization                                                   #
 ###########################################################################
 
+if ($DryRun -eq $true) {
+    write-output "Performing dry run - will not actually commit changes to the database"
+}
+
 Write-Output "Loading config file..."
 
 # Find the config file
@@ -279,47 +258,72 @@ $PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQL
 
 Write-Output "Processing input file..."
 
-$ConvertedRows = @()
+$AttendanceToImport = @{}
 
 foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 {
-    $ConvertedObj = @{}
+    # We don't care about "presents" so ignore those
+    # We may have to come back and have a "present" cancel out an absence or something... but for now, just ignore them
+    if ($InputRow.Code.ToLower() -eq "present") {
+        continue;
+    }
 
-    # Copy over the easy fields
-    $ConvertedObj.iSchoolID = [int]$InputRow.SchoolID
-    $ConvertedObj.dDate = [datetime]$InputRow.IncidentDate
-    $ConvertedObj.mComment = [string]$InputRow.Comment.Trim()
-    $ConvertedObj.mTags = [string]$InputRow.Tags.Trim()
-    $ConvertedObj.cIncidentID = [string]$InputRow.IncidentID
-    $ConvertedObj.dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
-    $ConvertedObj.iMeetingID = [int]$InputRow.MeetingID
+    $NewRecord = [PSCustomObject]@{
+        # Copy over the easy fields
+        iSchoolID = [int]$InputRow.SchoolID
+        dDate = [datetime]$InputRow.IncidentDate
+        mComment = [string]$InputRow.Comment.Trim()
+        mTags = [string]$InputRow.Tags.Trim()
+        cIncidentID = [string]$InputRow.IncidentID
+        dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
+        iMeetingID = [int]$InputRow.MeetingID
 
-    # Convert fields that we can convert using just this file
-    $ConvertedObj.iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
-    $ConvertedObj.iStaffID = Convert-StaffID -InputString $([string]$InputRow.TeacherGUIDs)
-    $ConvertedObj.iClassID = Convert-SectionID -InputString $([string]$InputRow.ClassGUID) -SchoolID $([string]$InputRow.SchoolID) -ClassName $([string]$InputRow.Class)
+        # Convert fields that we can convert using just this file
+        iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
+        iStaffID = Convert-StaffID -InputString $([string]$InputRow.TeacherGUIDs)
+        iClassID = Convert-SectionID -InputString $([string]$InputRow.ClassGUID) -SchoolID $([string]$InputRow.SchoolID) -ClassName $([string]$InputRow.Class)
 
-    # Convert fields using data from SchoolLogic
-    # iBlockNumber
-    $ConvertedObj.iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.PeriodIDs) -ClassName $([string]$InputRow.Class) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
-    $ConvertedObj.iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
-    $ConvertedObj.iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
+        # Convert fields using data from SchoolLogic
+        # iBlockNumber
+        iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.PeriodIDs) -ClassName $([string]$InputRow.Class) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
+        iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
+        iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
 
-    $ConvertedObj.Thumbprint = Get-Hash "$($ConvertedObj.iSchoolID)-$($ConvertedObj.iStudentID)-$($ConvertedObj.dDate.ToString("yyyyMMdd"))-$($ConvertedObj.iClassID)-$($ConvertedObj.iMeetingID)-$($ConvertedObj.iAttendanceStatusID)"
-    $ConvertedObj.ValueHash = Get-Hash "$($ConvertedObj.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($ConvertedObj.mComment)-$($ConvertedObj.iAttendanceReasonsID)-$($ConvertedObj.mTags)"
+        # We'll fill these in below, because it's easier to refer to all the fields we need
+        Thumbprint = ""
+        ValueHash = ""
+    }
 
-    # Ignore rows that converted badly
-    if ($ConvertedObj.iAttendanceStatusID -ne -1) {
-        $ConvertedRows += $ConvertedObj
+    # Calculate hashes
+    $NewRecord.Thumbprint = Get-Hash "$($NewRecord.iSchoolID)-$($NewRecord.iStudentID)-$($NewRecord.dDate.ToString("yyyyMMdd"))-$($NewRecord.iClassID)-$($NewRecord.iMeetingID)-$($NewRecord.iAttendanceStatusID)"
+    $NewRecord.ValueHash = Get-Hash "$($NewRecord.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($NewRecord.mComment)-$($NewRecord.iAttendanceReasonsID)-$($NewRecord.mTags)"
+
+    # Add to hashtable
+    if ($AttendanceToImport.ContainsKey($($NewRecord.Thumbprint)) -eq $false) {
+        $AttendanceToImport.Add($($NewRecord.Thumbprint), $NewRecord)
+    } else {
+        # A thumbprint already exists, so now we need to determine which we keep
+        # Is the value hash the same? If so, discard
+        # If the value hash is different, use the one updated most recently
+
+        $ExistingRecord = $AttendanceToImport[$($NewRecord.Thumbprint)]
+
+        if ($ExistingRecord.ValueHash -eq $NewRecord.ValueHash) {
+            # Do nothing - the values are the same, so just ignore this duplicate.
+            write-host "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
+        } else {
+            # Trust the one updated the most recently
+            if ($NewRecord.dEdsbyLastUpdate -gt $ExistingRecord.dEdsbyLastUpdate) {
+                # Replace the existing record with a newer one
+                $AttendanceToImport[$($NewRecord.Thumbprint)] = $NewRecord
+                write-host "Overriding older record with newer one for $($NewRecord.Thumbprint)"
+            } else {
+                # Do nothing - Ignore the older record
+                write-host "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
+            }
+        }
     }
 }
-
-
-###########################################################################
-# Sanity check                                                            #
-###########################################################################
-
-
 
 ###########################################################################
 # Compare to database                                                     #
@@ -333,7 +337,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 
 write-output "Caching existing attendance to compare to..."
 
-$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance ORDER BY cThumbprint;" # WHERE lEdsbySyncDoNotTouch=0
+$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance WHERE lEdsbySyncDoNotTouch=0 ORDER BY cThumbprint;"  
 $ExistingAttendance_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ExistingAttendance
 
 $ExistingAttendance = @{}
@@ -343,38 +347,21 @@ foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
         #$ExistingAttendance += @{ $ExistingAttendanceRow.cThumbprint = $ExistingAttendanceRow.cValueHash }
 
         if ($ExistingAttendance.ContainsKey($ExistingAttendanceRow.cThumbprint) -eq $false) {
-            $ExistingAttendance.Add($ExistingAttendanceRow.cThumbprint, @())
+            $ExistingAttendance.Add($ExistingAttendanceRow.cThumbprint, $ExistingAttendanceRow.cValueHash)
+        } else {
+            $ExistingAttendance[$ExistingAttendanceRow.cThumbprint] = $ExistingAttendanceRow.cValueHash
         }
-        $ExistingAttendance[$ExistingAttendanceRow.cThumbprint] += ($ExistingAttendanceRow.cValueHash)
     }
 }
 
-
-###########################################################################
-# Sanity check                                                            #
-###########################################################################
-
-# There can (and will) be duplicate absences for the same student/class/period, because of how attendance is entered.
-# Find these duplicates, and choose the most recently entered entry as the one that's most accurate.
-
-# Find existing records that have duplicates
-foreach($ExistingRecord in $ExistingAttendance.keys) {
-    if ($ExistingAttendance[$ExistingRecord].Count -gt 1)
-    {
-        $ExistingRecord
-    }
-}
-
-# Find records that we're importing that have duplicates
-
-exit
 
 # Now go through attendance we're importing, and see what bucket it should be in
 $RecordsToInsert = @()
-$RecordsToDelete = @()
 $RecordsToUpdate = @()
+$ThumbprintsToDelete = @()
 
-foreach($ImportedRecord in $ConvertedRows)
+write-output "Finding records to insert and update..."
+foreach($ImportedRecord in $AttendanceToImport.Values)
 {
     # Does this thumbprint exist in our table?
     # If not, insert it
@@ -382,43 +369,52 @@ foreach($ImportedRecord in $ConvertedRows)
     #  If not, update it
     #  If yes, no work needs to be done
 
-    if ($ExistingAttendance.ContainsKey($ImportedRecord.Thumbprint))
+    if ($ExistingAttendance.ContainsKey($($ImportedRecord.Thumbprint)))
     {
-        if ($ExistingAttendance[$ImportedRecord.Thumbprint] -eq $ImportedRecord.ValueHash)
+        if ($ExistingAttendance[$ImportedRecord.Thumbprint] -ne $($ImportedRecord.ValueHash))
         {
+            # Flag this one for an update
             $RecordsToUpdate += $ImportedRecord
+        } else {
+            # Do nothing - value hashes match, ignore this one
         }
     } else {
+        # Thumbprint doesn't exist - add new
         $RecordsToInsert += $ImportedRecord
     }
 }
 
-# Find attendance records that have been deleted
-foreach($ExistingRecord in $ExistingAttendance)
-{
-    # Does this thumbprint exist in the data we're importing?
-    #  If yes, do nothing
-    #  If no, flag for removal
-}
+if ($PerformDeletes -eq $true) {
+    write-output "Finding records to delete..."
+    # Find attendance records that have been deleted
+    foreach($ExistingThumbprint in $ExistingAttendance.Keys)
+    {
+        # Does this thumbprint exist in the data we're importing?
+        #  If yes, do nothing
+        #  If no, flag for removal
 
+        if ($AttendanceToImport.ContainsKey($ExistingThumbprint) -eq $false) {
+            $ThumbprintsToDelete += $ExistingThumbprint
+        }
+    }
+}
 write-output "To insert: $($RecordsToInsert.Count)"
 write-output "To update: $($RecordsToUpdate.Count)"
-write-output "To delete: $($RecordsToDelete.Count)"
+write-output "To delete: $($ThumbprintsToDelete.Count)"
 
 
-exit
+
 
 ###########################################################################
-# Import into SQL                                                         #
+# Perform SQL operations                                                  #
 ###########################################################################
-
-Write-Output "Inserting into database..."
 
 # Set up the SQL connection
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
-foreach ($NewRecord in $ConvertedRows) {
+write-output "Inserting $($RecordsToInsert.Count) records..."
+foreach ($NewRecord in $RecordsToInsert) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
     $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
                                     VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
@@ -441,7 +437,44 @@ foreach ($NewRecord in $ConvertedRows) {
     $SqlCommand.Connection = $SqlConnection
 
     $SqlConnection.open()
-    $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+    if ($DryRun -ne $true) {
+        $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+    }
     $SqlConnection.close()
+}
+
+write-output "Updating $($RecordsToUpdate.Count) records..."
+foreach ($UpdatedRecord in $RecordsToInsert) {
+    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+    $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
+    $SqlCommand.Parameters.AddWithValue("@REASONID",$UpdatedRecord.iAttendanceReasonsID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$UpdatedRecord.mComment) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$UpdatedRecord.mTags) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$UpdatedRecord.dEdsbyLastUpdate) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@VALHASH",$UpdatedRecord.ValueHash) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@THUMB",$UpdatedRecord.Thumbprint) | Out-Null
+    $SqlCommand.Connection = $SqlConnection
+
+    $SqlConnection.open()
+    if ($DryRun -ne $true) {
+        $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+    }
+    $SqlConnection.close()
+}
+
+if ($PerformDeletes -eq $true) {
+    write-output "Deleting $($ThumbprintsToDelete.Count) records..."
+    foreach ($ThumbToDelete in $ThumbprintsToDelete) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
+        $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete.Thumbprint) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
+
+        $SqlConnection.open()
+        if ($DryRun -ne $true) {
+            $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+        }
+        $SqlConnection.close()
+    }
 }
 
