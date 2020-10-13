@@ -2,6 +2,7 @@ param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
     [bool]$PerformDeletes,
+    [bool]$DryDelete,
     [bool]$DryRun
  )
 
@@ -393,7 +394,7 @@ foreach($ImportedRecord in $AttendanceToImport.Values)
     }
 }
 
-if ($PerformDeletes -eq $true) {
+if (($PerformDeletes -eq $true) -or ($DryDelete -eq $true)) {
     Write-Log "Finding records to delete..."
     # Find attendance records that have been deleted
     foreach($ExistingThumbprint in $ExistingAttendance.Keys)
@@ -412,8 +413,6 @@ Write-Log "To update: $($RecordsToUpdate.Count)"
 Write-Log "To delete: $($ThumbprintsToDelete.Count)"
 
 
-
-
 ###########################################################################
 # Perform SQL operations                                                  #
 ###########################################################################
@@ -421,6 +420,27 @@ Write-Log "To delete: $($ThumbprintsToDelete.Count)"
 # Set up the SQL connection
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
+
+
+
+if ($PerformDeletes -eq $true) {
+    Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
+    foreach ($ThumbToDelete in $ThumbprintsToDelete) {
+        if ($ThumbToDelete.Length -gt 1) {
+            Write-Log " > Deleting $ThumbToDelete"
+            $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+            $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
+            $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete) | Out-Null
+            $SqlCommand.Connection = $SqlConnection
+
+            $SqlConnection.open()
+            if ($DryRun -ne $true) {
+                $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
+            }
+            $SqlConnection.close()
+        }
+    }
+}
 
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
 foreach ($NewRecord in $RecordsToInsert) {
@@ -469,21 +489,5 @@ foreach ($UpdatedRecord in $RecordsToUpdate) {
         $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
     }
     $SqlConnection.close()
-}
-
-if ($PerformDeletes -eq $true) {
-    Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
-    foreach ($ThumbToDelete in $ThumbprintsToDelete) {
-        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-        $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
-        $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete.Thumbprint) | Out-Null
-        $SqlCommand.Connection = $SqlConnection
-
-        $SqlConnection.open()
-        if ($DryRun -ne $true) {
-            $Sqlcommand.ExecuteNonQuery() | Out-File -Append log.log
-        }
-        $SqlConnection.close()
-    }
 }
 
