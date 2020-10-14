@@ -3,7 +3,9 @@ param (
     [string]$ConfigFilePath,
     [bool]$PerformDeletes,
     [bool]$DryDelete,
-    [bool]$DryRun
+    [bool]$DryRun,
+    [bool]$AllowSyncToEmptyTable,
+    [bool]$DisableSafeties
  )
 
 ###########################################################################
@@ -364,6 +366,13 @@ foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
     }
 }
 
+# Fail if we were unable to get any existing attendance
+if ($AllowSyncToEmptyTable -ne $true) {
+    if ($ExistingAttendance.Count -lt 1) {
+        Write-Log "No existing attendance found. Stopping for safety. To disable this safety check, use -AllowSyncToEmptyTable."
+        exit
+    }
+}
 
 # Now go through attendance we're importing, and see what bucket it should be in
 $RecordsToInsert = @()
@@ -412,7 +421,18 @@ Write-Log "To insert: $($RecordsToInsert.Count)"
 Write-Log "To update: $($RecordsToUpdate.Count)"
 Write-Log "To delete: $($ThumbprintsToDelete.Count)"
 
+###########################################################################
+# Perform some safety checks                                              #
+###########################################################################
 
+if ($DisableSafeties -ne $true) {
+
+    # Stop if the script would delete more than 10% of the existing database entries
+    if ($ThumbprintsToDelete.Count -gt ($($ExistingAttendance.Count) * 0.1)) {
+        Write-Log "WARNING: Script would delete more than 10% of existing database entries. Stopping script for safety. To disable this safety, use -DisableSafeties"
+        exit
+    }
+}
 ###########################################################################
 # Perform SQL operations                                                  #
 ###########################################################################
@@ -422,8 +442,9 @@ $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
 
-
 if ($PerformDeletes -eq $true) {
+    # Implement a limit on the number of records that this script will willingly delete
+
     Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
     foreach ($ThumbToDelete in $ThumbprintsToDelete) {
         if ($ThumbToDelete.Length -gt 1) {
