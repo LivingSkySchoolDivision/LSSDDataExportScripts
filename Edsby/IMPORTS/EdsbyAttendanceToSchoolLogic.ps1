@@ -231,7 +231,7 @@ Write-Log "Loading config file..."
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
 if ($AdjustedConfigFilePath.Length -le 0) {
-    $AdjustedConfigFilePath = join-path -Path $(Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) -ChildPath "config.xml"
+    $AdjustedConfigFilePath = join-path -Path $(Split-Path (Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) -Parent) -ChildPath "config.xml"
 }
 
 # Retreive the connection string from config.xml
