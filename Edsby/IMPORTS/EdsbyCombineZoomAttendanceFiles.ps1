@@ -21,9 +21,9 @@ if (Test-Path $OutputFileName)
     Remove-Item $OutputFileName
 }
 
-write-host "Reading all csv files in `"$EdsbyLinkOutDirectory`""
+write-host "Reading all csv files in `"$InputDirectory`""
 
-Get-ChildItem -Path $EdsbyLinkOutDirectory -Filter "ZoomAttendance*.csv" | ForEach-Object {           
+Get-ChildItem -Path $InputDirectory -Filter "ZoomAttendance*.csv" | ForEach-Object {           
     $fileOutputRows = @()
 
     Write-Output "Processing $($_.FullName)..."     
