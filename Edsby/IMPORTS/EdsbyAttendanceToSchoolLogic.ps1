@@ -462,6 +462,8 @@ if ($PerformDeletes -eq $true) {
             $SqlConnection.open()
             if ($DryRun -ne $true) {
                 $Sqlcommand.ExecuteNonQuery()
+            } else {
+                Write-Log " (Skipping SQL query due to -DryRun)"
             }
             $SqlConnection.close()
         }
@@ -494,6 +496,8 @@ foreach ($NewRecord in $RecordsToInsert) {
     $SqlConnection.open()
     if ($DryRun -ne $true) {
         $Sqlcommand.ExecuteNonQuery()
+    } else {
+        Write-Log " (Skipping SQL query due to -DryRun)"
     }
     $SqlConnection.close()
 }
@@ -513,6 +517,8 @@ foreach ($UpdatedRecord in $RecordsToUpdate) {
     $SqlConnection.open()
     if ($DryRun -ne $true) {
         $Sqlcommand.ExecuteNonQuery()
+    } else {
+        Write-Log " (Skipping SQL query due to -DryRun)"
     }
     $SqlConnection.close()
 }
