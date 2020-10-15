@@ -241,6 +241,11 @@ if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
 $configXML = [xml](Get-Content $AdjustedConfigFilePath)
 $DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
 
+if($DBConnectionString.Length -lt 1) {
+    Throw "Connection string was not present in config file. Cannot continue - exiting."
+    exit
+}
+
 ###########################################################################
 # Check if the import file exists before going any further                #
 ###########################################################################
