@@ -231,7 +231,7 @@ Write-Log "Loading config file..."
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
 if ($AdjustedConfigFilePath.Length -le 0) {
-    $AdjustedConfigFilePath = join-path -Path $(Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) -ChildPath "config.xml"
+    $AdjustedConfigFilePath = join-path -Path $(Split-Path (Split-Path (Split-Path $MyInvocation.MyCommand.Path -Parent) -Parent) -Parent) -ChildPath "config.xml"
 }
 
 # Retreive the connection string from config.xml
@@ -240,6 +240,11 @@ if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
 }
 $configXML = [xml](Get-Content $AdjustedConfigFilePath)
 $DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
+
+if($DBConnectionString.Length -lt 1) {
+    Throw "Connection string was not present in config file. Cannot continue - exiting."
+    exit
+}
 
 ###########################################################################
 # Check if the import file exists before going any further                #
@@ -457,6 +462,8 @@ if ($PerformDeletes -eq $true) {
             $SqlConnection.open()
             if ($DryRun -ne $true) {
                 $Sqlcommand.ExecuteNonQuery()
+            } else {
+                Write-Log " (Skipping SQL query due to -DryRun)"
             }
             $SqlConnection.close()
         }
@@ -489,6 +496,8 @@ foreach ($NewRecord in $RecordsToInsert) {
     $SqlConnection.open()
     if ($DryRun -ne $true) {
         $Sqlcommand.ExecuteNonQuery()
+    } else {
+        Write-Log " (Skipping SQL query due to -DryRun)"
     }
     $SqlConnection.close()
 }
@@ -508,6 +517,8 @@ foreach ($UpdatedRecord in $RecordsToUpdate) {
     $SqlConnection.open()
     if ($DryRun -ne $true) {
         $Sqlcommand.ExecuteNonQuery()
+    } else {
+        Write-Log " (Skipping SQL query due to -DryRun)"
     }
     $SqlConnection.close()
 }
