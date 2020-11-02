@@ -2,7 +2,7 @@ param (
     [Parameter(Mandatory=$true)][string]$InputDirectory,
     [Parameter(Mandatory=$true)][string]$OutputFileName,
     [Parameter(Mandatory=$true)][string]$FileFilter,
-    [Parameter][int]$Skip
+    [Parameter(Mandatory=$true)][string]$SkipLines
  )
 
 function Get-CSV {
@@ -10,7 +10,7 @@ function Get-CSV {
         [Parameter(Mandatory=$true)][String] $CSVFile
     )
 
-    return import-csv $CSVFile | Select-Object -skip $Skip
+    return import-csv $CSVFile | Select-Object -skip $SkipLines
 }
 
 # CSV Delimeter
