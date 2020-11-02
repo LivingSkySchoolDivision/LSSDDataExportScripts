@@ -1,6 +1,8 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputDirectory,
-    [Parameter(Mandatory=$true)][string]$OutputFileName
+    [Parameter(Mandatory=$true)][string]$OutputFileName,
+    [Parameter(Mandatory=$true)][string]$FileFilter,
+    [Parameter][int]$Skip
  )
 
 function Get-CSV {
@@ -8,7 +10,7 @@ function Get-CSV {
         [Parameter(Mandatory=$true)][String] $CSVFile
     )
 
-    return import-csv $CSVFile | Select -skip 2
+    return import-csv $CSVFile | Select-Object -skip $Skip
 }
 
 # CSV Delimeter
@@ -21,9 +23,9 @@ if (Test-Path $OutputFileName)
     Remove-Item $OutputFileName
 }
 
-write-host "Reading all csv files in `"$InputDirectory`""
+write-host "Reading all csv files in `"$InputDirectory`" with filter `"$FileFilter`""
 
-Get-ChildItem -Path $InputDirectory -Filter "ZoomAttendance*.csv" | ForEach-Object {           
+Get-ChildItem -Path $InputDirectory -Filter $FileFilter | ForEach-Object {           
     $fileOutputRows = @()
 
     Write-Output "Processing $($_.FullName)..."     
