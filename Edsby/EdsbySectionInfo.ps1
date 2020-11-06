@@ -90,6 +90,7 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN Track T ON C.iTrackID = T.iTrackID
                 INNER JOIN TERM ELMTERM ON T.iTrackID = ELMTERM.iTrackID
             WHERE
+                C.iClassID IN (SELECT iClassID FROM Enrollment WHERE iLV_CompletionStatusID in ('3568','0','3569','3573')) AND
                 C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 # CSV Delimeter
