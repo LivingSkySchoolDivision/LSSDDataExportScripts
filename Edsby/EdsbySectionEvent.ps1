@@ -35,7 +35,7 @@ $SqlQuery = "SELECT DISTINCT
             
             UNION 
                 ALL
-
+ 
             SELECT DISTINCT
                 C.iSchoolID AS SchoolID,
                 CONCAT(C.iSchoolID,'-',C.iClassID) AS SectionGUID,
@@ -56,6 +56,7 @@ $SqlQuery = "SELECT DISTINCT
                 INNER JOIN Blocks B ON cs.iBlockNumber = b.iBlockNumber and t.iTrackID = b.iTrackID
             WHERE 
                 T.lDaily = 0 AND
+                C.iClassID IN (SELECT iClassID FROM Enrollment WHERE iLV_CompletionStatusID in ('3568','0','3569','3573')) AND
                 C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 # CSV Delimeter
