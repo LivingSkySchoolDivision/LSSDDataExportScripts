@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Settings>
   <SchoolLogic>
-    <ConnectionString>data source=SERVERNAME;initial catalog=DATABASENAME;user id=USERNAME;password=PASSWORD;Trusted_Connection=false</ConnectionString>
+    <ConnectionString>data source=SERVERNAME;initial catalog=DATABASENAME;user id=USERNAME;password=PASSWORD;Trusted_Connection=false</ConnectionString> <!-- Read only -->
+    <ConnectionStringRW>data source=SERVERNAME;initial catalog=DATABASENAME;user id=USERNAME;password=PASSWORD;Trusted_Connection=false</ConnectionStringRW> <!-- Read/Write-->
   </SchoolLogic>
-  <Navision>
+  <Navision> <!-- Navision only used by Clevr Staff export and is probably extremely specific to our environment -->
     <ConnectionString>data source=SERVERNAME;initial catalog=DATABASENAME;Trusted_Connection=true</ConnectionString>
   </Navision>
 </Settings>
