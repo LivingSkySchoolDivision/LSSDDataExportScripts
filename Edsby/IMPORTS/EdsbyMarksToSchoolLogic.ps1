@@ -75,6 +75,18 @@ function Get-Course {
     return $null
 }
 
+function Get-CreditEarned {
+    param(
+        [Parameter(Mandatory=$true)] [int]$PossibleCredits,
+        [Parameter(Mandatory=$true)] [int]$FinalMark
+    )
+
+    if ($FinalMark -gt 49) {
+        return $PossibleCredits
+    } else {
+        return 0
+    }
+}
 
 function Get-SQLData {
     param(
@@ -191,26 +203,33 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     if ($Course -eq $null) {
         Write-Log "COURSE NOT FOUND: $CourseCode"
         $MarksForInvalidCourses += $InputRow
+        continue
     }
 
     $NewMark = [PSCustomObject]@{
         iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
-        cCourseCode = [string]$InputRow.CourseCode
         nFinalMark = [string]$InputRow.FinalGrade        
         nYear = Convert-Year -InputString $([string]$InputRow.YearID)
         iSchoolID = [int]$InputRow.SchoolID
         ImportBatchID = $BatchThumbprint
+        iCourseID = [string]$InputRow.CourseCode
+        cCourseCode = $Course.cGovernmentCode
+        cCourseDesc = $Course.cName
+        nCreditPossible = [int]$Course.nHighCredit
+        nCreditEarned = 0
     }     
 
     if (($NewMark.nFinalMark -eq "IE") -or ($NewMark.nFinalMark.Length -le 1)) {        
         continue
     } else {
+        
+        $NewMark.nCreditEarned = Get-CreditEarned -FinalMark $([int]$InputRow.FinalGrade) -PossibleCredits $([int]$Course.nHighCredit)
+
         #write-host $NewMark
         $RecordsToInsert += $NewMark
     }   
 }
 
-exit
 ###########################################################################
 # Show marks for invalid courses                                          #
 ###########################################################################
@@ -234,12 +253,14 @@ $SqlConnection.ConnectionString = $DBConnectionString
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
 foreach ($NewRecord in $RecordsToInsert) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,cCourseCode,ImportBatchID)
-                                    VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSECODE,@BATCHID);"
+    $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,iCourseID,ImportBatchID,cCourseCode,cCourseDesc)
+                                    VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSEID,@BATCHID,@COURSECODE,@COURSEDESC);"
     $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null    
     $SqlCommand.Parameters.AddWithValue("@FINALMARK",$NewRecord.nFinalMark) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@YEAR",$NewRecord.nYear) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@COURSEID",$NewRecord.iCourseID) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@COURSECODE",$NewRecord.cCourseCode) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@COURSEDESC",$NewRecord.cCourseDesc) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@BATCHID",$NewRecord.ImportBatchID) | Out-Null
     $SqlCommand.Connection = $SqlConnection
 
@@ -251,5 +272,4 @@ foreach ($NewRecord in $RecordsToInsert) {
     }
     $SqlConnection.close()
 
-    break
 }
