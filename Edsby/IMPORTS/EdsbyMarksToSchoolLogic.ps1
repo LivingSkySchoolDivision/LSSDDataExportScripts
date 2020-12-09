@@ -1,10 +1,8 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
-    [bool]$PerformDeletes,
-    [bool]$DryDelete,
     [bool]$DryRun,
-    [bool]$AllowSyncToEmptyTable
+    [bool]$ClearZeroMarks
  )
 
 ###########################################################################
@@ -190,8 +188,6 @@ $BatchThumbprint = Get-Hash "BatchThumbprint$(Get-Date)"
 
 Write-Log "Processing input file..."
 
-$AttendanceToImport = @{}
-
 $RecordsToInsert = @()
 $MarksForInvalidCourses = @()
 
@@ -200,7 +196,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     $CourseCode = [string]$InputRow.CourseCode
     $Course = Get-Course -iCourseID $CourseCode -Courses $AllCourses
 
-    if ($Course -eq $null) {
+    if ($null -eq $Course) {
         Write-Log "COURSE NOT FOUND: $CourseCode"
         $MarksForInvalidCourses += $InputRow
         continue
@@ -221,10 +217,8 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 
     if (($NewMark.nFinalMark -eq "IE") -or ($NewMark.nFinalMark.Length -le 1)) {        
         continue
-    } else {
-        
+    } else {        
         $NewMark.nCreditEarned = Get-CreditEarned -FinalMark $([int]$InputRow.FinalGrade) -PossibleCredits $([int]$Course.nHighCredit)
-
         #write-host $NewMark
         $RecordsToInsert += $NewMark
     }   
@@ -235,12 +229,8 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 ###########################################################################
 
 
-
-###########################################################################
-# Insert into database                                                    #
-###########################################################################
-
 Write-Log "To insert: $($RecordsToInsert.Count)"
+Write-Log "Marks for courses that don't exist: $($MarksForInvalidCourses.Count)"
 
 ###########################################################################
 # Perform SQL operations                                                  #
@@ -253,8 +243,8 @@ $SqlConnection.ConnectionString = $DBConnectionString
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
 foreach ($NewRecord in $RecordsToInsert) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,iCourseID,ImportBatchID,cCourseCode,cCourseDesc)
-                                    VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSEID,@BATCHID,@COURSECODE,@COURSEDESC);"
+    $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,iCourseID,ImportBatchID,cCourseCode,cCourseDesc,nCreditPossible,nCreditEarned)
+                                    VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSEID,@BATCHID,@COURSECODE,@COURSEDESC,@CREDITPOSSIBLE,@CREDITEARNED);"
     $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null    
     $SqlCommand.Parameters.AddWithValue("@FINALMARK",$NewRecord.nFinalMark) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@YEAR",$NewRecord.nYear) | Out-Null
@@ -262,11 +252,13 @@ foreach ($NewRecord in $RecordsToInsert) {
     $SqlCommand.Parameters.AddWithValue("@COURSECODE",$NewRecord.cCourseCode) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@COURSEDESC",$NewRecord.cCourseDesc) | Out-Null
     $SqlCommand.Parameters.AddWithValue("@BATCHID",$NewRecord.ImportBatchID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@CREDITPOSSIBLE",$NewRecord.nCreditPossible) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@CREDITEARNED",$NewRecord.nCreditEarned) | Out-Null
     $SqlCommand.Connection = $SqlConnection
 
     $SqlConnection.open()
     if ($DryRun -ne $true) {
-        $Sqlcommand.ExecuteNonQuery()
+        $Sqlcommand.ExecuteNonQuery() | Out-Null
     } else {
         Write-Log " (Skipping SQL query due to -DryRun)"
     }
