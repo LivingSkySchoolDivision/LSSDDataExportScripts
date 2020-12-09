@@ -2,8 +2,24 @@ param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
     [bool]$DryRun,
-    [bool]$ClearZeroMarks
  )
+
+###########################################################################
+# CHANGES YOU NEED TO MAKE TO YOUR DATABASE                               #
+###########################################################################
+
+# Add the following fields to your MarksHistory table
+#  ImportBatchID - varchar(40)
+#  ImportTimestamp - datetime
+
+
+###########################################################################
+# Editable values                                                         #
+###########################################################################
+
+# Marks will be entered with this completion status ID from the Lookup values table. This should correspond to your "Completed" or "COMP" value in your lookup values table
+$CompletionStatusID = 3569
+
 
 ###########################################################################
 # Functions                                                               #
@@ -57,16 +73,16 @@ function Convert-StudentID {
     return [int]$InputString.Replace("STUDENT-","")
 }
 
-function Get-Course {
+
+function Get-ByID {
     param(
-        [Parameter(Mandatory=$true)] $iCourseID,
-        [Parameter(Mandatory=$true)] $Courses
+        [Parameter(Mandatory=$true)] $ID,
+        [Parameter(Mandatory=$true)] $Haystack
     )
 
-    # SELECT iCourseID, cName, cCourseCode, cGovernmentCode, nHighCredit FROM Course;
-    foreach($Course in $Courses) {
-        if ($Course.iCourseID -eq $CourseCode) {
-            return $Course
+    foreach($Obj in $Haystack) {
+        if ($Obj.ID -eq $ID) {
+            return $Obj
         }
     }
 
@@ -160,21 +176,32 @@ if (Test-Path $InputFileName)
     exit
 }
 
-
-##
-
 ###########################################################################
 # Collect required info from the SL database                              #
 ###########################################################################
 
 Write-Log "Loading required data from SchoolLogic DB..."
 
-$SQLQuery_AllCourses = "SELECT iCourseID, cName, cCourseCode, cGovernmentCode, nHighCredit FROM Course;"
+$SQLQuery_AllCourses = "SELECT iCourseID as ID, cName, cCourseCode, cGovernmentCode, nHighCredit FROM Course ORDER BY iCourseID;"
+$SQLQuery_AllSections = "SELECT iClassID as ID, iDefault_StaffID FROM Class ORDER BY iClassID;"
+$SQLQuery_AllTeachers = "SELECT iStaffID as ID, CONCAT(cLastName, ', ', cFirstName) as TeacherName FROM Staff ORDER BY iStaffID;"
+$SQLQuery_AllClassTerms = "SELECT iClassID as ID, iTermID FROM ClassTerm ORDER BY iClassID;"
+$SQLQuery_AllTerms = "SELECT iTermID as ID, dStartDate, dEndDate, cName FROM Term ORDER BY iTermID;"
+$SQLQuery_AllStudents = "SELECT iStudentID as ID, iGradesID FROM Student;"
 
 # Convert to hashtables for easier consumption
 $AllCourses = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllCourses
+$AllSections = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllSections
+$AllTeachers = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllTeachers
+$AllClassTerms = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllClassTerms
+$AllTerms = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllTerms
+$AllStudents = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllStudents
 
 Write-Log " Loaded $($AllCourses.Count) courses from SchoolLogic DB."
+Write-Log " Loaded $($AllSections.Count) sections from SchoolLogic DB."
+Write-Log " Loaded $($AllTeachers.Count) teachers from SchoolLogic DB."
+Write-Log " Loaded $($AllClassTerms.Count) classterms from SchoolLogic DB."
+Write-Log " Loaded $($AllTerms.Count) terms from SchoolLogic DB."
 
 ###########################################################################
 # Generate a unique ID for this batch                                     #
@@ -190,11 +217,48 @@ Write-Log "Processing input file..."
 
 $RecordsToInsert = @()
 $MarksForInvalidCourses = @()
+$MarksForInvalidSections = @()
 
 foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 {
     $CourseCode = [string]$InputRow.CourseCode
-    $Course = Get-Course -iCourseID $CourseCode -Courses $AllCourses
+    $Course = Get-ByID -ID $CourseCode -Haystack $AllCourses
+    
+    $TeacherName = ""
+    $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)    
+    $Section = Get-ByID -ID $SectionID -Haystack $AllSections
+    $StudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
+    $Student = Get-ByID -ID $StudentID -Haystack $AllStudents
+        
+    $GradesID = 0
+    $StartDate = '1900-01-01'
+    $EndDate = '1900-01-01'
+    $cTerm = ""
+
+    if ($null -ne $Student) {
+        $GradesID = $Student.iGradesID
+    }
+
+    if ($null -ne $Section) {
+        $Teacher = Get-ByID -ID $Section.iDefault_StaffID -Haystack $AllTeachers
+        if ($null -ne $Teacher) {
+            $TeacherName = $Teacher.TeacherName
+        }
+
+        $ClassTerm = Get-ByID -ID $Section.ID -Haystack $AllClassTerms
+
+        
+        if ($null -ne $ClassTerm) {
+            $Term = Get-ByID -ID $ClassTerm.iTermID -Haystack $AllTerms
+
+            if ($null -ne $Term) {
+                $StartDate = $Term.dStartDate
+                $EndDate = $Term.dEndDate
+                $cTerm = $Term.cName
+            }
+        }
+        
+    }
 
     if ($null -eq $Course) {
         Write-Log "COURSE NOT FOUND: $CourseCode"
@@ -202,8 +266,13 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
         continue
     }
 
+    if ($null -eq $Section) {
+        Write-Log "SECTION NOT FOUND: $SectionID"
+        $MarksForInvalidSections += $InputRow
+    }
+
     $NewMark = [PSCustomObject]@{
-        iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
+        iStudentID = $StudentID
         nFinalMark = [string]$InputRow.FinalGrade        
         nYear = Convert-Year -InputString $([string]$InputRow.YearID)
         iSchoolID = [int]$InputRow.SchoolID
@@ -213,6 +282,11 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
         cCourseDesc = $Course.cName
         nCreditPossible = [int]$Course.nHighCredit
         nCreditEarned = 0
+        cTeacher = $TeacherName
+        cTerm = $cTerm
+        dStartDate = $StartDate
+        dEndDate = $EndDate
+        iGradesID = $GradesID
     }     
 
     if (($NewMark.nFinalMark -eq "IE") -or ($NewMark.nFinalMark.Length -le 1)) {        
@@ -228,9 +302,9 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 # Show marks for invalid courses                                          #
 ###########################################################################
 
-
 Write-Log "To insert: $($RecordsToInsert.Count)"
 Write-Log "Marks for courses that don't exist: $($MarksForInvalidCourses.Count)"
+Write-Log "Marks for sections that don't exist: $($MarksForInvalidSections.Count)"
 
 ###########################################################################
 # Perform SQL operations                                                  #
@@ -240,28 +314,38 @@ Write-Log "Marks for courses that don't exist: $($MarksForInvalidCourses.Count)"
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
+if ($DryRun -ne $true) {
+
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
-foreach ($NewRecord in $RecordsToInsert) {
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,iCourseID,ImportBatchID,cCourseCode,cCourseDesc,nCreditPossible,nCreditEarned)
-                                    VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSEID,@BATCHID,@COURSECODE,@COURSEDESC,@CREDITPOSSIBLE,@CREDITEARNED);"
-    $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null    
-    $SqlCommand.Parameters.AddWithValue("@FINALMARK",$NewRecord.nFinalMark) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@YEAR",$NewRecord.nYear) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@COURSEID",$NewRecord.iCourseID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@COURSECODE",$NewRecord.cCourseCode) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@COURSEDESC",$NewRecord.cCourseDesc) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@BATCHID",$NewRecord.ImportBatchID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@CREDITPOSSIBLE",$NewRecord.nCreditPossible) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@CREDITEARNED",$NewRecord.nCreditEarned) | Out-Null
-    $SqlCommand.Connection = $SqlConnection
+    foreach ($NewRecord in $RecordsToInsert) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = "INSERT INTO MarksHistory(iStudentID,nFinalMark,nYear,iCourseID,ImportBatchID,cCourseCode,cCourseDesc,nCreditPossible,nCreditEarned,cActionCode,iSchoolID,ImportTimestamp,cTeacher,dModified,cTerm,dStartDate,dEndDate,iGradesID,iLV_CompletionStatusID)
+                                        VALUES(@STUDENTID, @FINALMARK,@YEAR,@COURSEID,@BATCHID,@COURSECODE,@COURSEDESC,@CREDITPOSSIBLE,@CREDITEARNED,@ACTIONCODE,@SCHOOLID,@IMPORTTIMESTAMP,@TEACHERNAME,@MODIFIEDDATE,@TERMNAME,@STARTDATE,@ENDDATE,@GRADESID,@COMPLETIONSTATUS);"
+        $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null    
+        $SqlCommand.Parameters.AddWithValue("@FINALMARK",$NewRecord.nFinalMark) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@YEAR",$NewRecord.nYear) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@COURSEID",$NewRecord.iCourseID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@COURSECODE",$NewRecord.cCourseCode) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@COURSEDESC",$NewRecord.cCourseDesc) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@BATCHID",$NewRecord.ImportBatchID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CREDITPOSSIBLE",$NewRecord.nCreditPossible) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CREDITEARNED",$NewRecord.nCreditEarned) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ACTIONCODE", 'A') | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@SCHOOLID",$NewRecord.iSchoolID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@IMPORTTIMESTAMP",$(Get-Date)) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MODIFIEDDATE",$(Get-Date)) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@TEACHERNAME",$NewRecord.cTeacher) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@TERMNAME",$NewRecord.cTerm) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@STARTDATE",$NewRecord.dStartDate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ENDDATE",$NewRecord.dEndDate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@GRADESID",$NewRecord.iGradesID) | Out-Null 
+        $SqlCommand.Parameters.AddWithValue("@COMPLETIONSTATUS",$CompletionStatusID) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
 
-    $SqlConnection.open()
-    if ($DryRun -ne $true) {
+        $SqlConnection.open()
         $Sqlcommand.ExecuteNonQuery() | Out-Null
-    } else {
-        Write-Log " (Skipping SQL query due to -DryRun)"
+        $SqlConnection.close()
     }
-    $SqlConnection.close()
-
+} else {
+    Write-Log "Skipping SQL operation due to -DryRun"
 }
