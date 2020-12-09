@@ -1,7 +1,7 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
-    [bool]$DryRun,
+    [bool]$DryRun
  )
 
 ###########################################################################
