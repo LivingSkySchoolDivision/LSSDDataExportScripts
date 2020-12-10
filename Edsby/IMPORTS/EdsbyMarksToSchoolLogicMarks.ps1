@@ -12,7 +12,6 @@ param (
 #  ImportBatchID - varchar(40)
 #  ImportTimestamp - datetime
 
-
 ###########################################################################
 # Functions                                                               #
 ###########################################################################
@@ -173,15 +172,18 @@ if (Test-Path $InputFileName)
 
 Write-Log "Loading required data from SchoolLogic DB..."
 
-$SQLQuery_AllSections = "SELECT iClassID as ID, iDefault_StaffID FROM Class ORDER BY iClassID;"
-$SQLQuery_ReportPeriods = "SELECT iClassID as ID, ClassPeriod.iReportPeriodID FROM ClassPeriod LEFT OUTER JOIN ReportPeriod ON ClassPeriod.iReportPeriodID=ReportPeriod.iReportPeriodID WHERE lMoveToHistory=1 ORDER BY ReportPeriod.dEndDate DESC, iClassID ASC"
+$SQLQuery_AllSections = "SELECT iClassID as ID, iCourseID FROM Class ORDER BY iClassID;"
+$SQLQuery_ReportPeriods = "SELECT iClassID as ID, ClassPeriod.iReportPeriodID FROM ClassPeriod LEFT OUTER JOIN ReportPeriod ON ClassPeriod.iReportPeriodID=ReportPeriod.iReportPeriodID WHERE lMoveToHistory=1 ORDER BY ReportPeriod.dEndDate DESC, iClassID ASC;"
+$SQLQuery_Courses = "SELECT iCourseID as ID, nHighCredit FROM Course ORDER BY iCourseID;"
 
 # Convert to hashtables for easier consumption
 $AllSections = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_AllSections
 $ReportPeriodsToHistory = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ReportPeriods
+$AllCourses = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_Courses
 
 Write-Log " Loaded $($AllSections.Count) sections from SchoolLogic DB."
 Write-Log " Loaded $($ReportPeriodsToHistory.Count) report periods (that move to history) from SchoolLogic DB."
+Write-Log " Loaded $($AllCourses.Count) courses from SchoolLogic DB."
 
 ###########################################################################
 # Generate a unique ID for this batch                                     #
@@ -208,6 +210,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
     $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)    
     $Section = Get-ByID -ID $SectionID -Haystack $AllSections
     $iReportPeriodID = 0
+    $nCredits = 0
 
     if ($null -eq $Section) {
         Write-Log "SECTION NOT FOUND: $SectionID"
@@ -218,6 +221,11 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
         foreach($RP in $ReportPeriod) {
             $iReportPeriodID = $RP.iReportPeriodID
         }
+        
+        $Course = Get-ByID -ID $Section.iCourseID -Haystack $AllCourses
+        if ($null -ne $Course) {
+            $nCredits = $Course.nHighCredit
+        }
     }
 
     $nMark = 0
@@ -227,6 +235,10 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
         $cMark = [string]$InputRow.FinalGrade
     } else {
         $nMark = [int]$InputRow.FinalGrade
+
+        if ($nMark -lt 50) {
+            $nCredits = 0
+        }
     }
 
     $NewMark = [PSCustomObject]@{        
@@ -237,7 +249,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
         iSchoolID = [int]$InputRow.SchoolID        
         ImportBatchID = $BatchThumbprint  
         mComment = [string]$InputRow.Comment      
-        nCredit = [decimal]0.0
+        nCredit = $nCredits
         dDateAssigned = $(Get-Date)
         iReportPeriodID = $iReportPeriodID
     }  
@@ -268,7 +280,6 @@ Write-Log "Inserting $($RecordsToInsert.Count) records..."
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
         $SqlCommand.CommandText = "INSERT INTO Marks(ImportBatchID,ImportTimestamp,iStudentID,iClassID,nMark,cMark,dDateAssigned,iSchoolID,mComment,nCredit,iReportPeriodID)
                                         VALUES(@BATCHID,@IMPORTTIMESTAMP,@STUDENTID,@CLASSID,@NMARK,@CMARK,@DATEASSIGN,@SCHOOLID,@MCOMMENT,@NCREDIT,@REPORTPERIODID);"
-
         $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@CLASSID",$NewRecord.iClassId) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@NMARK",$NewRecord.nMark) | Out-Null
@@ -280,8 +291,8 @@ Write-Log "Inserting $($RecordsToInsert.Count) records..."
         $SqlCommand.Parameters.AddWithValue("@BATCHID",$NewRecord.ImportBatchID) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@IMPORTTIMESTAMP",$(Get-Date)) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@REPORTPERIODID",$NewRecord.iReportPeriodID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CREDITS",$NewRecord.nCredit) | Out-Null
         $SqlCommand.Connection = $SqlConnection
-
         $SqlConnection.open()
         $Sqlcommand.ExecuteNonQuery() | Out-Null
         $SqlConnection.close()
