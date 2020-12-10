@@ -1,7 +1,10 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
-    [bool]$DryRun
+    [bool]$Commit,
+    [string]$OrphanedMarksLogPath,
+    [string]$EmptyMarksLogPath,
+    [string]$ErrorLogPath
  )
 
 ###########################################################################
@@ -132,8 +135,8 @@ function Write-Log
 # Script initialization                                                   #
 ###########################################################################
 
-if ($DryRun -eq $true) {
-    Write-Log "Performing dry run - will not actually commit changes to the database"
+if ($Commit -ne $true) {
+    Write-Log "Performing dry run - will not actually commit changes to the database. Enable writing to database with -Commit `$true"
 }
 
 Write-Log "Loading config file..."
@@ -199,63 +202,70 @@ Write-Log "Processing input file..."
 
 $RecordsToInsert = @()
 $MarksForInvalidSections = @()
+$IgnoredEmptyMarks = @()
+$ErrorRows = @()
 
 foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 {        
-    # Ignore this mark if it's empty
-    if ($InputRow.FinalGrade.Length -lt 1) {
-        continue
-    }
-
-    $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)    
-    $Section = Get-ByID -ID $SectionID -Haystack $AllSections
-    $iReportPeriodID = 0
-    $nCredits = 0
-
-    if ($null -eq $Section) {
-        Write-Log "SECTION NOT FOUND: $SectionID"
-        $MarksForInvalidSections += $InputRow
-    } else {
-        $ReportPeriod = Get-ByID -ID $SectionID -Haystack $ReportPeriodsToHistory
-
-        foreach($RP in $ReportPeriod) {
-            $iReportPeriodID = $RP.iReportPeriodID
+    try {
+        # Ignore this mark if it's empty
+        if ($InputRow.FinalGrade.Length -lt 1) {
+            $IgnoredEmptyMarks += $InputRow
+            continue
         }
+
+        $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)    
+        $Section = Get-ByID -ID $SectionID -Haystack $AllSections
+        $iReportPeriodID = 0
+        $nCredits = 0
+
+        if ($null -eq $Section) {
+            Write-Log "SECTION NOT FOUND: $SectionID"
+            $MarksForInvalidSections += $InputRow
+        } else {
+            $ReportPeriod = Get-ByID -ID $SectionID -Haystack $ReportPeriodsToHistory
+
+            foreach($RP in $ReportPeriod) {
+                $iReportPeriodID = $RP.iReportPeriodID
+            }
+            
+            $Course = Get-ByID -ID $Section.iCourseID -Haystack $AllCourses
+            if ($null -ne $Course) {
+                $nCredits = $Course.nHighCredit
+            }
+        }
+
+        $nMark = 0
+        $cMark = ""
+
+        if ($InputRow.FinalGrade -eq "IE") {
+            $cMark = [string]$InputRow.FinalGrade
+        } else {
+            $nMark = [int]$InputRow.FinalGrade
+
+            if ($nMark -lt 50) {
+                $nCredits = 0
+            }
+        }
+
+        $NewMark = [PSCustomObject]@{        
+            iClassID =  $SectionID
+            iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
+            cMark = $cMark
+            nMark = $nMark        
+            iSchoolID = [int]$InputRow.SchoolID        
+            ImportBatchID = $BatchThumbprint  
+            mComment = [string]$InputRow.Comment      
+            nCredit = $nCredits
+            dDateAssigned = $(Get-Date)
+            iReportPeriodID = $iReportPeriodID
+        }  
         
-        $Course = Get-ByID -ID $Section.iCourseID -Haystack $AllCourses
-        if ($null -ne $Course) {
-            $nCredits = $Course.nHighCredit
-        }
+        $RecordsToInsert += $NewMark
+    } 
+    catch {
+        $ErrorRows += $InputRow
     }
-
-    $nMark = 0
-    $cMark = ""
-
-    if ($InputRow.FinalGrade -eq "IE") {
-        $cMark = [string]$InputRow.FinalGrade
-    } else {
-        $nMark = [int]$InputRow.FinalGrade
-
-        if ($nMark -lt 50) {
-            $nCredits = 0
-        }
-    }
-
-    $NewMark = [PSCustomObject]@{        
-        iClassID =  $SectionID
-        iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
-        cMark = $cMark
-        nMark = $nMark        
-        iSchoolID = [int]$InputRow.SchoolID        
-        ImportBatchID = $BatchThumbprint  
-        mComment = [string]$InputRow.Comment      
-        nCredit = $nCredits
-        dDateAssigned = $(Get-Date)
-        iReportPeriodID = $iReportPeriodID
-    }  
-    
-    $RecordsToInsert += $NewMark
-
 }
 
 ###########################################################################
@@ -263,7 +273,24 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 ###########################################################################
 
 Write-Log "To insert: $($RecordsToInsert.Count)"
-Write-Log "Marks for sections that don't exist: $($MarksForInvalidSections.Count)"
+
+Write-Log "Ignored empty marks: $($IgnoredEmptyMarks.Count) (use -EmptyMarksLogPath <filename> to dump these to a csv)."
+if ($EmptyMarksLogPath.Length -gt 0) {
+    Write-Log " Empty marks log written to file: $EmptyMarksLogPath"
+    $IgnoredEmptyMarks | Export-CSV $EmptyMarksLogPath
+}
+
+Write-Log "Marks for sections that don't exist: $($MarksForInvalidSections.Count)  (use -OrphanedMarksLogPath <filename> to dump these to a csv)."
+if ($OrphanedMarksLogPath.Length -gt 0) {
+    Write-Log " Log written to file: $OrphanedMarksLogPath"
+    $MarksForInvalidSections | Export-CSV $OrphanedMarksLogPath
+}
+
+Write-Log "Rows that caused errors: $($ErrorRows.Count)  (use -ErrorLogPath <filename> to dump these to a csv)."
+if ($ErrorLogPath.Length -gt 0) {
+    Write-Log " Log written to file: $ErrorLogPath"
+    $ErrorRows | Export-CSV $ErrorLogPath
+}
 
 ###########################################################################
 # Perform SQL operations                                                  #
@@ -273,8 +300,7 @@ Write-Log "Marks for sections that don't exist: $($MarksForInvalidSections.Count
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
-if ($DryRun -ne $true) {
-
+if ($Commit -eq $true) {
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
     foreach ($NewRecord in $RecordsToInsert) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
@@ -298,5 +324,5 @@ Write-Log "Inserting $($RecordsToInsert.Count) records..."
         $SqlConnection.close()
     }
 } else {
-    Write-Log "Skipping SQL operation due to -DryRun"
+    Write-Log "Skipping SQL operations. To enable writing to database, add -Commit `$true"
 }
