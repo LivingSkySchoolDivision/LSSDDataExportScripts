@@ -1,3 +1,54 @@
+<#
+.SYNOPSIS
+Imports and processes an Edsby Report Card Export CSV into the SchoolLogic Database.
+
+.DESCRIPTION
+Imports and processes an Edsby Report Card Export CSV into the SchoolLogic Database.
+
+You will need to make the following additions to your SchoolLogic database:
+In the Marks table, you must add two fields:
+ - ImportTimeStamp - datetime
+ - ImportBatchID - varchar(40)
+
+These fields help you troubleshoot or roll back any potential errors, and provide a way to delete database changes that this script creates. Each time this script writes to your database, rows it adds will include a unique ID hash as well as a timestamp. To "undo" an import, find the batch ID and remove any entries in your Marks table with that value in the ImportBatchID field.
+
+.PARAMETER ConfigFilePath
+Specify the path to the config file. Config file should be an XML file that contains the database connection string. Example config file can be found below.
+
+Example config.xml:
+<?xml version="1.0" encoding="utf-8" ?>
+<Settings>
+  <SchoolLogic>
+    <ConnectionStringRW>data source=SERVERNAME;initial catalog=DATABASENAME;user id=USERNAME;password=PASSWORD;Trusted_Connection=false</ConnectionStringRW><!-- Read/Write-->
+  </SchoolLogic>  
+</Settings>
+
+.PARAMETER EmptyMarksLogPath
+If there are any empty marks in your import file, they will be dumped into this CSV file. If this parameter is not specified, empty marks in the import file will be silently ignored. If there are no empty marks, no file will be created.
+
+.PARAMETER OrphanedMarksLogPath
+If there are marks in your import file for classes/sections that do not exist in your SchoolLogic/SIRS database, they will be logged to this CSV file. If this parameter is not specified, these "orphaned" marks will be silently ignored. If there are no orphaned marks, no file will be created.
+
+.PARAMETER ErrorLogPath
+If there are parsing errors when reading lines from the import file, the lines will be written to this CSV file. If this parameter is not specified, lines causing errors or exceptions will be ignored. If there are no errors, no file will be created.
+
+.PARAMETER Commit
+Enable writing to the database. Disabled by default, as a safety mechanism. To enable writing to the database, use "-Commit $true"
+
+.EXAMPLE
+PS> .\EdsbyMarksToSchoolLogicMarks.ps1 -ConfigFilePath config.xml -inputfilename import.csv -EmptyMarksLogPath empty.csv -OrphanedMarksLogPath orphans.csv -ErrorLogPath errors.csv -Commit $false
+
+The above example imports a file and will identify any errors either in the console, or in one of three potential CSV files that are created.
+
+.EXAMPLE
+PS> .\EdsbyMarksToSchoolLogicMarks.ps1 -ConfigFilePath config.xml -inputfilename import.csv -Commit $true
+
+Having dealt with all of the issues, the above example will import the file into the database.
+
+.LINK
+https://github.com/LivingSkySchoolDivision/LSSDDataExportScripts
+
+#>
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
@@ -172,6 +223,7 @@ Write-Log " Loaded $($AllCourses.Count) courses from SchoolLogic DB."
 ###########################################################################
 
 $BatchThumbprint = Get-Hash "BatchThumbprint$(Get-Date)"
+Write-Log "ImportBatchID for this script run: $BatchThumbprint"
 
 ###########################################################################
 # Process the file                                                        #
@@ -185,7 +237,7 @@ $IgnoredEmptyMarks = @()
 $ErrorRows = @()
 
 foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
-{        
+{
     try {
         # Ignore this mark if it's empty
         if ($InputRow.FinalGrade.Length -lt 1) {
@@ -193,7 +245,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
             continue
         }
 
-        $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)    
+        $SectionID = [int]$(Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $InputRow.SchoolID)
         $Section = Get-ByID -ID $SectionID -Haystack $AllSections
         $iReportPeriodID = 0
         $nCredits = 0
@@ -207,7 +259,7 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
             foreach($RP in $ReportPeriod) {
                 $iReportPeriodID = $RP.iReportPeriodID
             }
-            
+
             $Course = Get-ByID -ID $Section.iCourseID -Haystack $AllCourses
             if ($null -ne $Course) {
                 $nCredits = $Course.nHighCredit
@@ -227,21 +279,21 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
             }
         }
 
-        $NewMark = [PSCustomObject]@{        
+        $NewMark = [PSCustomObject]@{
             iClassID =  $SectionID
             iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
             cMark = $cMark
-            nMark = $nMark        
-            iSchoolID = [int]$InputRow.SchoolID        
-            ImportBatchID = $BatchThumbprint  
-            mComment = [string]$InputRow.Comment      
+            nMark = $nMark
+            iSchoolID = [int]$InputRow.SchoolID
+            ImportBatchID = $BatchThumbprint
+            mComment = [string]$InputRow.Comment
             nCredit = $nCredits
             dDateAssigned = $(Get-Date)
             iReportPeriodID = $iReportPeriodID
-        }  
-        
+        }
+
         $RecordsToInsert += $NewMark
-    } 
+    }
     catch {
         $ErrorRows += $InputRow
     }
