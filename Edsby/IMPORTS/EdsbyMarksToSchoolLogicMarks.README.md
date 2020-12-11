@@ -11,6 +11,14 @@ Assumptions that this script makes:
 
 To adjust how this script parses your Section and Student Ids, edit the Convert-StudentID and/or Convert-SectionID functions below.
 
+# How to use this to do an SDS marks upload
+
+This is best done _before_ performing a Semester-End-Update in SchoolLogic/SIRS.
+
+ 1. Obtain report card exports from Edsby for each school you need to upload.
+ 2. Use this script to import the marks into the Marks table for each school.
+ 3. Perform a Semester End Update in SchooLogic/SIRS. This will transfer the marks to MarksHistory.
+ 4. Run the SDS upload, and your Edsby marks should show up in your SDS export.
 
 # Usage
 
