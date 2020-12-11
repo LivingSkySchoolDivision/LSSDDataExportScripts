@@ -120,6 +120,27 @@ function Convert-StudentID {
     return [int]$InputString.Replace("STUDENT-","")
 }
 
+function Convert-EarnedCredits {
+    param(
+        [Parameter(Mandatory=$true)] $InputString,
+        [Parameter(Mandatory=$true)][int]$PotentialCredits
+    )
+
+    try {
+        $parsed = [int]$InputString
+        if ($parsed -gt 49) {
+            return $PotentialCredits
+        } else {
+            return 0
+        }
+
+    }
+    catch {
+        # We couldn't parse a number, so assume its a non-mark mark (like IE or NYM) or an error
+        return 0
+    }
+}
+
 function Get-ByID {
     param(
         [Parameter(Mandatory=$true)] $ID,
@@ -272,21 +293,25 @@ foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
 
             $Course = Get-ByID -ID $Section.iCourseID -Haystack $AllCourses
             if ($null -ne $Course) {
-                $nCredits = $Course.nHighCredit
+                $nCredits = Convert-EarnedCredits -PotentialCredits $Course.nHighCredit -InputString $InputRow.FinalGrade
             }
         }
 
+        # Parse the mark into the appropriate field
         $nMark = 0
         $cMark = ""
+        try {
+            $parsedMark = [int]$InputRow.FinalGrade
+            $nMark = $parsedMark            
+        }
+        catch {
+            $cMark = $InputRow.FinalGrade
+        }
 
-        if ($InputRow.FinalGrade -eq "IE") {
-            $cMark = [string]$InputRow.FinalGrade
-        } else {
-            $nMark = [int]$InputRow.FinalGrade
-
-            if ($nMark -lt 50) {
-                $nCredits = 0
-            }
+        # If the mark is empty after we parse it, count it as an ignored empty mark and skip it
+        if (($nMark -eq 0) -and ($cMark -eq "")) {
+            $IgnoredEmptyMarks += $InputRow
+            continue
         }
 
         $NewMark = [PSCustomObject]@{
