@@ -1,5 +1,16 @@
 # Edsby to SchoolLogic Marks import
 
+# Warning
+This script was designed to work with Edsby GUIDs set up in a specific way - specifically, the way that the other Edsby export scripts in this repository are written.
+
+If you are not running this on Living Sky School Division data, you will likely need to edit this script to suit your environment.
+
+Assumptions that this script makes:
+ - Your SectionGUIDs in Edsby are iSchoolID-iClassID, corresponding to the iSchoolID and iClassID values in SchoolLogic.
+ - Your StudentGUIDs are STUDENT-iStudentID, where STUDENT is literally the word "STUDENT" in capital letters, and iStudentID corresponds to the iStudentID in SchoolLogic.
+
+To adjust how this script parses your Section and Student Ids, edit the Convert-StudentID and/or Convert-SectionID functions below.
+
 
 # Usage
 

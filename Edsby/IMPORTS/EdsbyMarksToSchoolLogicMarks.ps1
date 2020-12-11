@@ -3,7 +3,15 @@
 Imports and processes an Edsby Report Card Export CSV into the SchoolLogic Database.
 
 .DESCRIPTION
-Imports and processes an Edsby Report Card Export CSV into the SchoolLogic Database.
+This script processes the Edsby Report Card Export CSV file and imports its contents into the Marks table of your SchoolLogic/SIRS database.
+
+This script relies on ID numbers set up in a specific way between your SchoolLogic/SIRS database and Edsby. If you are not running this on Living Sky School Division data, you will likely need to edit this script to suit your environment.
+
+Assumptions that this script makes:
+ - Your SectionGUIDs in Edsby are iSchoolID-iClassID, corresponding to the iSchoolID and iClassID values in SchoolLogic.
+ - Your StudentGUIDs are STUDENT-iStudentID, where STUDENT is literally the word "STUDENT" in capital letters, and iStudentID corresponds to the iStudentID in SchoolLogic.
+
+To adjust how this script parses your Section and Student Ids, edit the Convert-StudentID and/or Convert-SectionID functions below.
 
 You will need to make the following additions to your SchoolLogic database:
 In the Marks table, you must add two fields:
@@ -47,6 +55,8 @@ Having dealt with all of the issues, the above example will import the file into
 
 .LINK
 https://github.com/LivingSkySchoolDivision/LSSDDataExportScripts
+https://github.com/LivingSkySchoolDivision
+https://www.lskysd.ca
 
 #>
 param (
