@@ -51,14 +51,6 @@ function Convert-SectionID {
     return $InputString.Replace("$SchoolID-","")
 }
 
-function Convert-Year {
-    param(
-        [Parameter(Mandatory=$true)] $InputString
-    )
-
-    return [int]$([int]$InputString-1)
-}
-
 function Convert-StudentID {
     param(
         [Parameter(Mandatory=$true)] $InputString
@@ -80,19 +72,6 @@ function Get-ByID {
     }
 
     return $null
-}
-
-function Get-CreditEarned {
-    param(
-        [Parameter(Mandatory=$true)] [int]$PossibleCredits,
-        [Parameter(Mandatory=$true)] [int]$FinalMark
-    )
-
-    if ($FinalMark -gt 49) {
-        return $PossibleCredits
-    } else {
-        return 0
-    }
 }
 
 function Get-SQLData {
