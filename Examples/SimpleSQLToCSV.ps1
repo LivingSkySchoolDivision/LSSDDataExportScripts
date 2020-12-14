@@ -13,8 +13,8 @@ param (
 $SqlQuery = "SELECT iStudentId, cFirstName, cLastName,dBirthdate FROM Student;"
 
 # CSV Delimeter
-# Some systems expect this to be a tab "\t" or a pipe "|".
-$Delimeter = ','
+# Some systems expect this to be a tab "`t" or a pipe "|".
+$Delimeter = ","
 
 # Should all columns be quoted, or just those that contains characters to escape?
 # Note: This has no effect on systems with PowerShell versions <7.0 (all fields will be quoted otherwise)
