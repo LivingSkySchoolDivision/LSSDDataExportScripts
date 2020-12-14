@@ -3,6 +3,10 @@ param (
     [string]$ConfigFilePath
  )
 
+# This is based on an import file format provided by BusPlanner/Georef in 2017.
+# The format corresponds to an XML "template" file found in the busplanner directory - this file has been included in this repo.
+# This template file was originally found in "C:\inetpub\wwwroot\BusPlannerWebSuite\Applications\BusPlannerTasks\Files" on the BusPlanner server.
+
 ##############################################
 # Script configuration                       #
 ##############################################
@@ -39,22 +43,22 @@ $SqlQuery = "SELECT
                 UserStudent.UF_1654_1 as Range,
                 UserStudent.UF_2093 as Meridian,
                 UserStudent.UF_2096 as RiverLot,
-                '' as Contact1ID,
-                '' as Contact1FirstName,
-                '' as Contact1LastName,
-                '' as Contact1Relation,
-                '' as Contact1HomePhone,
-                '' as Contact1WorkPhone,
-                '' as Contact1CellPhone,
-                '' as Contact1Email,
-                '' as Contact2ID,
-                '' as Contact2FirstName,
-                '' as Contact2LastName,
-                '' as Contact2Relation,
-                '' as Contact2HomePhone,
-                '' as Contact2WorkPhone,
-                '' as Contact2CellPhone,
-                '' as Contact2Email
+                Contact1.iContactID as Contact1ID,
+                Contact1.cFirstName as Contact1FirstName,
+                Contact1.cLastName as Contact1LastName,
+                ContactRelation1LV.cName as Contact1Relation,
+                Contact1Location.cPhone as Contact1HomePhone,
+                Contact1.cBusPhone as Contact1WorkPhone,
+                Contact1.mCellphone as Contact1CellPhone,
+                Contact1.mEmail as Contact1Email,
+                Contact2.iContactID as Contact2ID,
+                Contact2.cFirstName as Contact2FirstName,
+                Contact2.cLastName as Contact2LastName,
+                ContactRelation2LV.cName as Contact2Relation,
+                Contact2Location.cPhone as Contact2HomePhone,
+                Contact2.cBusPhone as Contact2WorkPhone,
+                Contact2.mCellphone as Contact2CellPhone,
+                Contact2.mEmail as Contact2Email
                 FROM 
                     StudentStatus
                     LEFT OUTER JOIN Student ON StudentStatus.iStudentID=Student.iStudentID
@@ -66,6 +70,14 @@ $SqlQuery = "SELECT
                     LEFT OUTER JOIN Country ON Location.iCountryID=Country.iCountryID
                     LEFT OUTER JOIN LookupValues AS LV_GENDER ON Student.iLV_GenderID=LV_GENDER.iLookupValuesID
                     LEFT OUTER JOIN UserStudent ON Student.iStudentID=UserStudent.iStudentID
+                    LEFT OUTER JOIN ContactRelation as ContactRelation1 ON (SELECT TOP 1 iContactRelationID FROM ContactRelation WHERE iStudentID=Student.iStudentID AND lmail=1 ORDER BY iContactPriority)=ContactRelation1.iContactRelationID
+                    LEFT OUTER JOIN Contact AS Contact1 ON ContactRelation1.iContactID=Contact1.iContactID
+                    LEFT OUTER JOIN LookUpValues as ContactRelation1LV ON ContactRelation1.iLV_RelationID=ContactRelation1LV.iLookupValuesID
+                    LEFT OUTER JOIN Location as Contact1Location ON Contact1.iLocationID=Contact1Location.iLocationID
+                    LEFT OUTER JOIN ContactRelation as ContactRelation2 ON (SELECT TOP 1 iContactRelationID FROM ContactRelation WHERE iStudentID=Student.iStudentID AND lmail=1 AND iContactID<>Contact1.iContactID ORDER BY iContactPriority)=ContactRelation2.iContactRelationID
+                    LEFT OUTER JOIN Contact AS Contact2 ON ContactRelation2.iContactID=Contact2.iContactID
+                    LEFT OUTER JOIN LookUpValues as ContactRelation2LV ON ContactRelation2.iLV_RelationID=ContactRelation2LV.iLookupValuesID
+                    LEFT OUTER JOIN Location as Contact2Location ON Contact2.iLocationID=Contact2Location.iLocationID
                 WHERE
                     (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                     ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
@@ -73,7 +85,7 @@ $SqlQuery = "SELECT
                 ;"
 
 # CSV Delimeter
-# Some systems expect this to be a tab "\t" or a pipe "|".
+# Some systems expect this to be a tab "`t" or a pipe "|".
 $Delimeter = "`t"
 
 # Should all columns be quoted, or just those that contains characters to escape?

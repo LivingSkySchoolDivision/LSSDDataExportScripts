@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Student_Update Version="3">
+  <Preprocess Type="SQLServer">
+	<Import_File Type="Delimited" Delimiter="&amp;#x9;" FieldNames="true">
+		<Field><Name>SchoolID</Name><MapsTo>SchoolID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>0</Order></Field>
+		<Field><Name>StudentID</Name><MapsTo>StudentID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>1</Order></Field>
+		<Field><Name>FirstName</Name><MapsTo>FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>2</Order></Field>
+		<Field><Name>LastName</Name><MapsTo>LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>3</Order></Field>
+		<Field><Name>BirthDate</Name><MapsTo>BirthDate</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>4</Order></Field>
+		<Field><Name>Gender</Name><MapsTo>Gender</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>5</Order></Field>
+		<Field><Name>Grade</Name><MapsTo>Grade</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>6</Order></Field>
+		<Field><Name>Phone</Name><MapsTo>Phone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>7</Order></Field>
+		<Field><Name>HomeAddressStreetNum</Name><MapsTo>HomeAddressStreetNum</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>8</Order></Field>
+		<Field><Name>HomeAddressStreetName</Name><MapsTo>HomeAddressStreetName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>9</Order></Field>
+		<Field><Name>HomeAddressMunicipality</Name><MapsTo>HomeAddressMunicipality</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>10</Order></Field>
+		<Field><Name>HomeAddressProvince</Name><MapsTo>HomeAddressProvince</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>11</Order></Field>
+		<Field><Name>HomeAddressCountry</Name><MapsTo>HomeAddressCountry</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>12</Order></Field>
+		<Field><Name>HomeAddressPostalCode</Name><MapsTo>HomeAddressPostalCode</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>13</Order></Field>
+		<Field><Name>ReserveName</Name><MapsTo>ReserveName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>14</Order></Field>
+		<Field><Name>ReserveHouse</Name><MapsTo>ReserveHouse</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>15</Order></Field>
+		<Field><Name>HomeAddressLocationID</Name><MapsTo>HomeAddressLocationID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>16</Order></Field>
+		<Field><Name>Quarter</Name><MapsTo>Quarter</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>17</Order></Field>
+		<Field><Name>Section</Name><MapsTo>Section</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>18</Order></Field>
+		<Field><Name>Township</Name><MapsTo>Township</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>19</Order></Field>
+		<Field><Name>Range</Name><MapsTo>Range</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>20</Order></Field>
+		<Field><Name>Meridian</Name><MapsTo>Meridian</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>21</Order></Field>
+		<Field><Name>RiverLot</Name><MapsTo>RiverLot</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>22</Order></Field>
+		<Field><Name>Contact1ID</Name><MapsTo>Contact1ID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>23</Order></Field>
+		<Field><Name>Contact1FirstName</Name><MapsTo>Contact1FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>24</Order></Field>
+		<Field><Name>Contact1LastName</Name><MapsTo>Contact1LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>25</Order></Field>
+		<Field><Name>Contact1Notes</Name><MapsTo>Contact1Notes</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>26</Order></Field>
+		<Field><Name>Contact1HomePhone</Name><MapsTo>Contact1HomePhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>27</Order></Field>
+		<Field><Name>Contact1WorkPhone</Name><MapsTo>Contact1WorkPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>28</Order></Field>
+		<Field><Name>Contact1CellPhone</Name><MapsTo>Contact1CellPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>29</Order></Field>
+		<Field><Name>Contact1Email1</Name><MapsTo>Contact1Email1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>30</Order></Field>
+		<Field><Name>Contact2ID</Name><MapsTo>Contact2ID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>31</Order></Field>
+		<Field><Name>Contact2FirstName</Name><MapsTo>Contact2FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>32</Order></Field>
+		<Field><Name>Contact2LastName</Name><MapsTo>Contact2LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>33</Order></Field>
+		<Field><Name>Contact2Notes</Name><MapsTo>Contact2Notes</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>34</Order></Field>
+		<Field><Name>Contact2HomePhone</Name><MapsTo>Contact2HomePhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>35</Order></Field>
+		<Field><Name>Contact2WorkPhone</Name><MapsTo>Contact2WorkPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>36</Order></Field>
+		<Field><Name>Contact2CellPhone</Name><MapsTo>Contact2CellPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>37</Order></Field>
+		<Field><Name>Contact2Email1</Name><MapsTo>Contact2Email1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>38</Order></Field>
+		<Field><Name>HomeAddressMailingAddress1</Name><MapsTo>HomeAddressMailingAddress1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>39</Order></Field>
+		<Field><Name>HomeAddressMailingAddress2</Name><MapsTo>HomeAddressMailingAddress2</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>40</Order></Field>
+		<Field><Name>Contact1ContactType</Name><MapsTo>Contact1ContactType</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>41</Order></Field>
+		<Field><Name>Contact2ContactType</Name><MapsTo>Contact2ContactType</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>42</Order></Field>
+		<Field><Name>Contact1Priority</Name><MapsTo>Contact1Priority</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>43</Order></Field>
+		<Field><Name>Contact2Priority</Name><MapsTo>Contact2Priority</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>44</Order></Field>
+		<Field><Name>Group1</Name><MapsTo>Group1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>45</Order></Field>
+
+	</Import_File>
+	
+	<Actions>
+		<Action Type="SQL">
+	      <Order>0</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetNum] = '' where [HomeAddressStreetNum] like '%BOX%' ]]></Command>
+	    	</Action>	
+		<Action Type="SQL">
+	      <Order>1</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetName] = '' where [HomeAddressStreetName] like '%BOX%' ]]></Command>
+	    	</Action>			
+	
+	
+	
+		<Action Type="SQL">
+	      <Order>2</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetNum] = Substring([HomeAddressStreetName], patindex('%[0-9]%', [HomeAddressStreetName]), 1+patindex('%[0-9][^0-9]%', [HomeAddressStreetName]+'x')-patindex('%[0-9]%', [HomeAddressStreetName])) where [HomeAddressStreetNum] is null ]]></Command>
+	    	</Action>	
+		<Action Type="SQL">
+	      <Order>3</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetName] = Substring([HomeAddressStreetName], patindex('%[^A-Z,^0-9]%', [HomeAddressStreetName])+1, len([HomeAddressStreetName]) - patindex('%[^A-Z,^0-9]%', [HomeAddressStreetName])+1) where patindex('%[A-Z]%', [HomeAddressStreetName]) <> 1 AND patindex('%[A-Z]%', [HomeAddressStreetName]) <> 2 AND patindex('%[A-Z]%', [HomeAddressStreetName]) <> 3 AND patindex('%[A-Z]%', [HomeAddressStreetName]) <> 4  ]]></Command>
+	    	</Action>		
+		<Action Type="SQL">
+	      <Order>4</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetNum] = substring([HomeAddressStreetNum], patindex('%[0-9]%', [HomeAddressStreetNum]), 1+patindex('%[0-9][^0-9]%', [HomeAddressStreetNum]+'x')-patindex('%[0-9]%', [HomeAddressStreetNum])) ]]></Command>
+	    	</Action>		
+	
+	
+	
+		<Action Type="SQL">
+	      <Order>20</Order>
+	      <Command><![CDATA[UPDATE Processing SET [Gender] = 'M' WHERE [Gender] = 'M%']]></Command>
+	    	</Action>
+		<Action Type="SQL">
+	      <Order>22</Order>
+	      <Command><![CDATA[UPDATE Processing SET [Gender] = 'F' WHERE [Gender] = 'F%']]></Command>
+	    	</Action>
+		<Action Type="SQL">
+	      <Order>23</Order>
+	      <Command><![CDATA[UPDATE Processing SET [HomeAddressMailingAddress2] = [HomeAddressMunicipality] + ',' + ' ' + 'SK' + ' ' + [HomeAddressPostalCode] ]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>24</Order>
+	       <Command><![CDATA[UPDATE Processing SET [HomeAddressMailingAddress1] = [HomeAddressStreetNum] + ' ' + [HomeAddressStreetName] WHERE [HomeAddressStreetNum] NOT LIKE 'Box%' AND [HomeAddressStreetNum] NOT LIKE 'PO%']]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>25</Order>
+	       <Command><![CDATA[UPDATE Processing SET [HomeAddressMailingAddress1] = [HomeAddressStreetNum] WHERE [HomeAddressStreetNum] LIKE 'Box%' AND [HomeAddressStreetName] is null]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>26</Order>
+	       <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetNum] = '' WHERE [HomeAddressLocationID] IS NOT NULL]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>27</Order>
+	       <Command><![CDATA[UPDATE Processing SET [HomeAddressStreetName] = '' WHERE [HomeAddressLocationID] IS NOT NULL]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>28</Order>
+	       <Command><![CDATA[UPDATE Processing SET [HomeAddressMunicipality] = '' WHERE [HomeAddressLocationID] IS NOT NULL]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>29</Order>
+	       <Command><![CDATA[UPDATE Processing SET [Contact1ContactType] = 'Contact1']]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>30</Order>
+	       <Command><![CDATA[UPDATE Processing SET [Contact2ContactType] = 'Contact2']]></Command>
+	    </Action>		
+		<Action Type="SQL">
+	       <Order>31</Order>
+	       <Command><![CDATA[UPDATE Processing SET [Contact1Priority] = 0]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>32</Order>
+	       <Command><![CDATA[UPDATE Processing SET [Contact2Priority] = 1]]></Command>
+	    </Action>
+		<Action Type="SQL">
+	       <Order>33</Order>
+	       <Command><![CDATA[UPDATE Processing SET [Group1] = 'Address Exclusion']]></Command>
+	    </Action>		
+		
+	</Actions>
+	
+	</Preprocess>
+
+	<Import_File Type="Delimited" Delimiter="&amp;#x9;" FieldNames="true">
+		<Field><Name>SchoolID</Name><MapsTo>SchoolID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>0</Order></Field>
+		<Field><Name>StudentID</Name><MapsTo>StudentID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>1</Order></Field>
+		<Field><Name>FirstName</Name><MapsTo>FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>2</Order></Field>
+		<Field><Name>LastName</Name><MapsTo>LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>3</Order></Field>
+		<Field><Name>Grade</Name><MapsTo>Grade</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>4</Order></Field>
+		<Field><Name>Gender</Name><MapsTo>Gender</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>5</Order></Field>
+		<Field><Name>BirthDate</Name><MapsTo>BirthDate</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>6</Order></Field>
+		<Field><Name>Phone</Name><MapsTo>Phone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>7</Order></Field>
+		<Field><Name>HomeAddressStreetNum</Name><MapsTo>HomeAddressStreetNum</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>8</Order></Field>
+		<Field><Name>HomeAddressStreetName</Name><MapsTo>HomeAddressStreetName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>9</Order></Field>
+		<Field><Name>HomeAddressMunicipality</Name><MapsTo>HomeAddressMunicipality</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>10</Order></Field>
+		<Field><Name>HomeAddressProvince</Name><MapsTo>HomeAddressProvince</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>11</Order></Field>
+		<Field><Name>HomeAddressPostalCode</Name><MapsTo>HomeAddressPostalCode</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>12</Order></Field>
+		<Field><Name>HomeAddressLocationID</Name><MapsTo>HomeAddressLocationID</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>13</Order></Field>
+		<Field><Name>HomeAddressMailingAddress1</Name><MapsTo>HomeAddressMailingAddress1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>14</Order></Field>
+		<Field><Name>HomeAddressMailingAddress2</Name><MapsTo>HomeAddressMailingAddress2</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>15</Order></Field>
+        <Field><Name>Contact1ContactType</Name><MapsTo>Contact1ContactType</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>16</Order></Field>
+        <Field><Name>Contact1FirstName</Name><MapsTo>Contact1FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>17</Order></Field>
+        <Field><Name>Contact1LastName</Name><MapsTo>Contact1LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>18</Order></Field>
+        <Field><Name>Contact1Priority</Name><MapsTo>Contact1Priority</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>19</Order></Field>
+        <Field><Name>Contact1Notes</Name><MapsTo>Contact1Notes</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>20</Order></Field>
+        <Field><Name>Contact1HomePhone</Name><MapsTo>Contact1HomePhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>21</Order></Field>
+        <Field><Name>Contact1WorkPhone</Name><MapsTo>Contact1WorkPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>22</Order></Field>
+        <Field><Name>Contact1CellPhone</Name><MapsTo>Contact1CellPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>23</Order></Field>
+        <Field><Name>Contact1Email1</Name><MapsTo>Contact1Email1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>24</Order></Field>
+        <Field><Name>Contact2ContactType</Name><MapsTo>Contact2ContactType</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>25</Order></Field>
+        <Field><Name>Contact2FirstName</Name><MapsTo>Contact2FirstName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>26</Order></Field>
+        <Field><Name>Contact2LastName</Name><MapsTo>Contact2LastName</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>27</Order></Field>
+        <Field><Name>Contact2Priority</Name><MapsTo>Contact2Priority</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>28</Order></Field>
+        <Field><Name>Contact2Notes</Name><MapsTo>Contact2Notes</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>29</Order></Field>
+        <Field><Name>Contact2HomePhone</Name><MapsTo>Contact2HomePhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>30</Order></Field>
+        <Field><Name>Contact2WorkPhone</Name><MapsTo>Contact2WorkPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>31</Order></Field>
+        <Field><Name>Contact2CellPhone</Name><MapsTo>Contact2CellPhone</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>32</Order></Field>
+        <Field><Name>Contact2Email1</Name><MapsTo>Contact2Email1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>33</Order></Field>
+        <Field><Name>Group1</Name><MapsTo>Group1</MapsTo><StartsAt>-1</StartsAt><Width>-1</Width><Default></Default><Order>34</Order></Field>
+		
+	</Import_File>
+	
+	<Settings>
+		<Option Key="OptionalMatch" Value="" />
+		<Option Key="OptionalMatch2" Value="" />
+		<Option Key="OptionalMatch3" Value="" />
+		<Option Key="NoStudentID" Value="1" />
+		<Option Key="District" Value="LSSD" />
+		<Option Key="Add" Value="1" />
+		<Option Key="Active" Value="1" />
+		<Option Key="Delete" Value="0" />
+		<Option Key="StopDistrictChanges" Value="0" />
+		<Option Key="DetermineElig" Value="1" />
+		<Option Key="EligTravelCode" Value="0" />
+		<Option Key="EligSpecEd" Value="0" />
+		<Option Key="EligSpecEdYes" Value="0" />
+		<Option Key="ImportTravelCodes" Value="0" />
+		<Option Key="TCSpecEd" Value="0" />
+		<Option Key="Regeocode" Value="0" />
+		<Option Key="KeepTransportation" Value="0" />
+		<Option Key="LocationForNewStudentsOnly" Value="0" />
+		<Option Key="UseBirthDateFormat" Value="1" />
+		<Option Key="BirthDateOrder" Value="MDY" />
+		<Option Key="BirthDateDelimiter" Value="/" />
+		<Option Key="UseTransForMail" Value="0" />
+		<Option Key="KeepAltAddress" Value="0" />
+		<Option Key="ExcludeSpecEdOption" Value="0" />
+		<Option Key="ExcludeSchoolGradeForSpecEd" Value="0" />
+		<Option Key="SpecEdExcludeAddressChanges" Value="0" />
+		<Option Key="SpecEdExcludeProgramChanges" Value="0" />
+		<Option Key="ExcludeStudentGroupOption" Value="1" />		
+		<Option Key="GroupExcludeSchoolGradeChanges" Value="0" />
+		<Option Key="GroupExcludeAddressChanges" Value="1" />
+		<Option Key="GroupExcludeProgramChanges" Value="0" />
+		<Option Key="ExcludeStudentGroup" Value="Address Exclusion" />
+		<Option Key="DefaultLocationIDForNewStudents" Value="" />
+		<Option Key="AllowMultipleStudentRecordProcessing" Value="0" />
+		<Option Key="AllowRemoveFromTransportation" Value="0" />
+		<Option Key="AllowAssignToTransportation" Value="0" />
+		<Option Key="ExcludeTransportedStudents" Value="0" />
+		<Option Key="ExcludeAddressChangesForTransportedStudents" Value="0" />
+		<Option Key="ExcludeSchoolChangesForTransportedStudents" Value="0" />
+		<Option Key="ExcludeSchoolChangesForTransportedStudents_KeepTransportation" Value="0" />
+	</Settings>
+</Student_Update>
