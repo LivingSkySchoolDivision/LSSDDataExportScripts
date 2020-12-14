@@ -34,15 +34,15 @@ $SqlQuery = "SELECT
                 CAST(
                     CASE
                         WHEN UserStudent.UF_1651 <> 0
-                            THEN CONCAT(UserStudent.UF_1651,'-',UserStudent.UF_2098,'-',UserStudent.UF_1653_1,'-',UserStudent.UF_1654_1,'-W',UserStudent.UF_2093)
+                            THEN CONCAT(LL_Quarter.cName,'-',LL_Section.cName,'-',LL_Township.cName,'-',LL_Range.cName,'-W',LL_Meridian.cName)
                     END AS varchar
                 ) as LandLocation,
-                UserStudent.UF_1651 as Quarter,
-                UserStudent.UF_2098 as Section,
-                UserStudent.UF_1653_1 as Township,
-                UserStudent.UF_1654_1 as Range,
-                UserStudent.UF_2093 as Meridian,
-                UserStudent.UF_2096 as RiverLot,
+                LL_Quarter.cName as Quarter,
+                LL_Section.cName as Section,
+                LL_Township.cName as Township,
+                LL_Range.cName as Range,
+                LL_Meridian.cName as Meridian,
+                LL_RiverLot.cName as RiverLot,
                 Contact1.iContactID as Contact1ID,
                 Contact1.cFirstName as Contact1FirstName,
                 Contact1.cLastName as Contact1LastName,
@@ -78,6 +78,12 @@ $SqlQuery = "SELECT
                     LEFT OUTER JOIN Contact AS Contact2 ON ContactRelation2.iContactID=Contact2.iContactID
                     LEFT OUTER JOIN LookUpValues as ContactRelation2LV ON ContactRelation2.iLV_RelationID=ContactRelation2LV.iLookupValuesID
                     LEFT OUTER JOIN Location as Contact2Location ON Contact2.iLocationID=Contact2Location.iLocationID
+                    LEFT OUTER JOIN LookupValues AS LL_Quarter ON UserStudent.UF_1651=LL_Quarter.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LL_Section ON UserStudent.UF_2098=LL_Section.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LL_Township ON UserStudent.UF_1653_1=LL_Township.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LL_Range ON UserStudent.UF_1654_1=LL_Range.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LL_Meridian ON UserStudent.UF_2093=LL_Meridian.iLookupValuesID
+                    LEFT OUTER JOIN LookupValues AS LL_RiverLot ON UserStudent.UF_2096=LL_RiverLot.iLookupValuesID
                 WHERE
                     (StudentStatus.dInDate <=  { fn CURDATE() }) AND
                     ((StudentStatus.dOutDate < '1901-01-01') OR (StudentStatus.dOutDate >=  { fn CURDATE() }))  AND 
