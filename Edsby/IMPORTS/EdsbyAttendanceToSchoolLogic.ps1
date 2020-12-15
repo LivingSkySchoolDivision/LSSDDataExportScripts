@@ -32,6 +32,7 @@ function Convert-AttendanceReason {
     # 100   Medical
     # 101   Extra-Curr
     # 103   Curricular
+    # 104   Engaged
 
     # Reason codes from Edsby
     #   S-Curr
@@ -57,6 +58,7 @@ function Convert-AttendanceReason {
     if ($InputString -like '*-Med') { return 100 }
     if ($InputString -like '*-Curr') { return 103 }
     if ($InputString -like '*-XCurr') { return 101 }
+    if ($InputString -like '*-Eng') { return 104 }
 
     return 0
 }
