@@ -43,6 +43,7 @@ $SqlQuery = "SELECT
                 LEFT OUTER JOIN LookupValues title ON us.iEdsbyRoleid = title.iLookupValuesID
             WHERE 
                 s.iSchoolID NOT IN (5850953,5850963,5850964,5851066) 
+                AND S.lInactive = 0
                 AND cLastName NOT LIKE 'ADMIN%' 
                 AND cLastName NOT LIKE '%egov%' 
                 AND s.iStaffID NOT IN 
