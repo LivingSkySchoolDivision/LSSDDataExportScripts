@@ -74,7 +74,8 @@ $SqlQuery = "SELECT
                             5850963, -- Manacowin School
                             5850964, -- Phoenix School
                             5851066, -- Zinactive
-                            5851067 -- Home Based 
+                            5851067, -- Home Based 
+                            5850943 -- Cut Knife Elementary
                             )
                         AND (StudentStatus.dInDate <=  getDate() + 1) 
                         AND (
