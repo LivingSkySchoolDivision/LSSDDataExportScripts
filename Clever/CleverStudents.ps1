@@ -29,7 +29,11 @@ $SqlQuery = "SELECT
                     WHEN Grades.cName = 'pk' THEN 'PreKindergarten'
                     ELSE CAST(CAST(LTRIM(RTRIM(Grades.cName)) AS INT) AS VARCHAR)
                 END AS Grade,
-                Gender.cCode AS Gender,
+                CASE
+                    WHEN Gender.cCode = 'F' THEN 'F'
+                    WHEN Gender.cCode = 'M' THEN 'M'
+                    ELSE 'X'
+                END AS Gender,
                 '' AS Graduation_year,
                 FORMAT(Student.dBirthdate, 'MM/dd/yyyy') AS DOB,
                 '' AS Race,
