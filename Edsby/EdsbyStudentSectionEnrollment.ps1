@@ -34,8 +34,11 @@ $SqlQuery = "SELECT
             FROM
                 Enrollment E
                 INNER JOIN CLASS C ON E.iClassID = C.iClassID
+				INNER JOIN StudentStatus SS ON E.iStudentID = SS.iStudentID
             WHERE
                 (iLV_CompletionStatusID=0 OR iLV_CompletionStatusID=3568) AND
+                (SS.dInDate <=  getDate() + 1) AND
+                ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
                 C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 
