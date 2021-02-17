@@ -4,12 +4,6 @@ param (
  )
 
 ##############################################
-# About this file
-##############################################
-# The "teachers.csv" file should only include teachers who have classes associated with them.
-# Staff that are duplicates (for multi-school purposes) should be skipped
-
-##############################################
 # Script configuration                       #
 ##############################################
 
