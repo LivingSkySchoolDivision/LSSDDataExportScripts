@@ -57,6 +57,7 @@ $SqlQuery = "SELECT DISTINCT
             WHERE 
                 T.lDaily = 0 AND
                 C.iClassID IN (SELECT iClassID FROM Enrollment WHERE iLV_CompletionStatusID in ('3568','0','3569','3573')) AND
+				C.iCourseID != '548' AND -- 'Drivers Ed' 
                 C.iLV_SessionID != '4720' --Session set to No Edsby;"
 
 # CSV Delimeter
