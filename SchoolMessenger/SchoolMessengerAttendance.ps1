@@ -118,8 +118,6 @@ if ($JustDailyAttendance -eq $true) {
     $SqlQuery += " AND Track.lDaily=1"
 }
 
-write-host $SqlQuery
-
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
 $Delimeter = ','
