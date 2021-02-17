@@ -5,6 +5,7 @@ param (
     [string]$DateFrom,
     [string]$DateTo,
     [string]$SchoolIDs,
+    [string]$SchoolDANs,
     [string]$ConfigFilePath
  )
 
@@ -28,21 +29,38 @@ if ($DateTo -ne $null) {
      } catch {}
 }
 
-$SchoolList_Split = @();
+$SchoolIDList_Split = @();
 
 foreach($item in $SchoolIDs.Split(","))
 {
     try {
     $id_int = [int]::Parse($item)
     if ($id_int -gt 0) {
-        if ($SchoolList_Split.Contains($id_int) -eq $false) {
-            $SchoolList_Split += ($id_int);
+        if ($SchoolIDList_Split.Contains($id_int) -eq $false) {
+            $SchoolIDList_Split += ($id_int);
         }        
     }
     } catch {}
 }
 
-$PARAM_SchoolList = [string]::Join(",", $SchoolList_Split)
+$PARAM_SchoolIDList = [string]::Join(",", $SchoolIDList_Split)
+
+
+$SchoolDANList_Split = @();
+
+foreach($item in $SchoolDANs.Split(","))
+{
+    try {
+    $id_int = [int]::Parse($item)
+    if ($id_int -gt 0) {
+        if ($SchoolDANList_Split.Contains($id_int) -eq $false) {
+            $SchoolDANList_Split += ($id_int);
+        }        
+    }
+    } catch {}
+}
+
+$PARAM_SchoolDANList= [string]::Join(",", $SchoolDANList_Split)
 
 ##############################################
 # Script configuration                       #
@@ -81,10 +99,15 @@ $SqlQuery = "SELECT
                     LEFT OUTER JOIN Grades ON Student.iGradesID=Grades.iGradesID
                     LEFT OUTER JOIN Location ON Student.iLocationID=Location.iLocationID
                     LEFT OUTER JOIN Track ON Student.iTrackID=Track.iTrackID
+                    LEFT OUTER JOIN School ON AttendanceToday.iSchoolID=School.iSchoolID
                 WHERE 1=1"
 
-if ($PARAM_SchoolList.Length -gt 0) {
-    $SqlQuery += " AND AttendanceToday.iSchoolID IN ($PARAM_SchoolList)"
+if ($PARAM_SchoolIDList.Length -gt 0) {
+    $SqlQuery += " AND AttendanceToday.iSchoolID IN ($PARAM_SchoolIDList)"
+}
+
+if ($PARAM_SchoolDANList.Length -gt 0) {
+    $SqlQuery += " AND School.cCode IN ($PARAM_SchoolDANList)"
 }
 
 if ($JustPeriodAttendance -eq $true){
@@ -94,6 +117,8 @@ if ($JustPeriodAttendance -eq $true){
 if ($JustDailyAttendance -eq $true) {
     $SqlQuery += " AND Track.lDaily=1"
 }
+
+write-host $SqlQuery
 
 # CSV Delimeter
 # Some systems expect this to be a tab "`t" or a pipe "|".
