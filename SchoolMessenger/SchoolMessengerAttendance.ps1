@@ -1,7 +1,7 @@
 param (
     [Parameter(Mandatory=$true)][string]$OutputFileName,
-    [bool]$JustPeriodAttendance,
-    [bool]$JustDailyAttendance,
+    [switch]$JustPeriodAttendance,
+    [switch]$JustDailyAttendance,
     [string]$DateFrom,
     [string]$DateTo,
     [string]$SchoolIDs,
