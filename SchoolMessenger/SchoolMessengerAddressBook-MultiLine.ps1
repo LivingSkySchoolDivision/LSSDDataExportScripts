@@ -46,7 +46,7 @@ $Delimeter = ','
 
 # Should all columns be quoted, or just those that contains characters to escape?
 # Note: This has no effect on systems with PowerShell versions <7.0 (all fields will be quoted otherwise)
-$QuoteAllColumns = $false
+$QuoteAllColumns = $true
 
 ##############################################
 # No configurable settings beyond this point #
