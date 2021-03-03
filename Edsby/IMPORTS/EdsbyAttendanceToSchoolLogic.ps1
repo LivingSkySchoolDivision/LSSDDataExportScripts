@@ -29,23 +29,22 @@ function Validate-CSV {
 
     $line = Get-Content $CSVFile -first 1
 
-    write-host $line
     # Check if the first row contains headings we expect
     if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
-    if ($line.Contains('"Comment"') -eq $false) { throw "Input CSV missing field: Comment" }
-    if ($line.Contains('"IncidentDate"') -eq $false) { throw "Input CSV missing field: IncidentDate" }
-    if ($line.Contains('"Tags"') -eq $false) { throw "Input CSV missing field: Tags" }
+    if ($line.Contains('"IncidentComment"') -eq $false) { throw "Input CSV missing field: IncidentComment" }
+    if ($line.Contains('"MeetingDate"') -eq $false) { throw "Input CSV missing field: MeetingDate" }
+    if ($line.Contains('"IncidentTags"') -eq $false) { throw "Input CSV missing field: IncidentTags" }
     if ($line.Contains('"IncidentID"') -eq $false) { throw "Input CSV missing field: IncidentID" }
-    if ($line.Contains('"UpdateDate"') -eq $false) { throw "Input CSV missing field: UpdateDate" }
+    if ($line.Contains('"IncidentUpdateDateTime"') -eq $false) { throw "Input CSV missing field: IncidentUpdateDateTime" }
     if ($line.Contains('"MeetingID"') -eq $false) { throw "Input CSV missing field: MeetingID" }
     if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
-    if ($line.Contains('"TeacherGUIDs"') -eq $false) { throw "Input CSV missing field: TeacherGUIDs" }
-    if ($line.Contains('"ClassGUID"') -eq $false) { throw "Input CSV missing field: ClassGUID" }
-    if ($line.Contains('"Class"') -eq $false) { throw "Input CSV missing field: Class" }
-    if ($line.Contains('"PeriodIDs"') -eq $false) { throw "Input CSV missing field: PeriodIDs" }
-    if ($line.Contains('"Code"') -eq $false) { throw "Input CSV missing field: Code" }
-    if ($line.Contains('"ReasonCode"') -eq $false) { throw "Input CSV missing field: ReasonCode" }
-
+    if ($line.Contains('"MeetingTeacherGUIDs"') -eq $false) { throw "Input CSV missing field: MeetingTeacherGUIDs" }
+    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }
+    if ($line.Contains('"SectionName"') -eq $false) { throw "Input CSV missing field: SectionName" }
+    if ($line.Contains('"MeetingPeriodIDs"') -eq $false) { throw "Input CSV missing field: MeetingPeriodIDs" }
+    if ($line.Contains('"IncidentCode"') -eq $false) { throw "Input CSV missing field: IncidentCode" }
+    if ($line.Contains('"IncidentReasonCode"') -eq $false) { throw "Input CSV missing field: IncidentReasonCode" }
+    
     return $true
 }
 
@@ -55,7 +54,7 @@ function Get-CSV {
     )
 
     if ((Validate-CSV $CSVFile) -eq $true) {
-        return import-csv $CSVFile -header('SchoolID','IncidentID','IncidentDate','UpdateDate','StudentFirstName','StudentLastName','StudentGUID','StudentID','StudentMinistryID','StudentGrade','PeriodIDs','MeetingID','MeetingStartTime','MeetingEndTime','Class','ClassGUID','TeacherNames','TeacherGUIDs','Room','Code','ReasonCode','Reason','Comment','Tags') | Select -skip 1
+        return import-csv $CSVFile  | Select -skip 1
     } else {
         throw "CSV file is not valid - cannot continue"
     }
@@ -324,30 +323,30 @@ foreach ($InputRow in $CSVInputFile)
 {
     # We don't care about "presents" so ignore those
     # We may have to come back and have a "present" cancel out an absence or something... but for now, just ignore them
-    if ($InputRow.Code.ToLower() -eq "present") {
+    if ($InputRow.IncidentCode.ToLower() -eq "present") {
         continue;
     }
 
     $NewRecord = [PSCustomObject]@{
         # Copy over the easy fields
         iSchoolID = [int]$InputRow.SchoolID
-        dDate = [datetime]$InputRow.IncidentDate
-        mComment = [string]$InputRow.Comment.Trim()
-        mTags = [string]$InputRow.Tags.Trim()
+        dDate = [datetime]$InputRow.MeetingDate
+        mComment = [string]$InputRow.IncidentComment.Trim()
+        mTags = [string]$InputRow.IncidentTags.Trim()
         cIncidentID = [string]$InputRow.IncidentID
-        dEdsbyLastUpdate = [datetime]$InputRow.UpdateDate
+        dEdsbyLastUpdate = [datetime]$InputRow.IncidentUpdateDateTime
         iMeetingID = [int]$InputRow.MeetingID
 
         # Convert fields that we can convert using just this file
         iStudentID = Convert-StudentID -InputString $([string]$InputRow.StudentGUID)
-        iStaffID = Convert-StaffID -InputString $([string]$InputRow.TeacherGUIDs)
-        iClassID = Convert-SectionID -InputString $([string]$InputRow.ClassGUID) -SchoolID $([string]$InputRow.SchoolID) -ClassName $([string]$InputRow.Class)
+        iStaffID = Convert-StaffID -InputString $([string]$InputRow.MeetingTeacherGUIDs)
+        iClassID = Convert-SectionID -InputString $([string]$InputRow.SectionGUID) -SchoolID $([string]$InputRow.SchoolID) -ClassName $([string]$InputRow.SectionName)
 
         # Convert fields using data from SchoolLogic
         # iBlockNumber
-        iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.PeriodIDs) -ClassName $([string]$InputRow.Class) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
-        iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.Code) -AttendanceReasonCode $([string]$InputRow.ReasonCode)
-        iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.ReasonCode)
+        iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.MeetingPeriodIDs) -ClassName $([string]$InputRow.SectionName) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
+        iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.IncidentCode) -AttendanceReasonCode $([string]$InputRow.IncidentReasonCode)
+        iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.IncidentReasonCode)
 
         # We'll fill these in below, because it's easier to refer to all the fields we need
         Thumbprint = ""
@@ -435,6 +434,7 @@ foreach($ImportedRecord in $AttendanceToImport.Values)
     # If yes, check it's value hash - does it match?
     #  If not, update it
     #  If yes, no work needs to be done
+
 
     if ($ExistingAttendance.ContainsKey($($ImportedRecord.Thumbprint)))
     {
