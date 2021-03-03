@@ -11,12 +11,54 @@ param (
 ###########################################################################
 # Functions                                                               #
 ###########################################################################
+
+function Write-Log
+{
+    param(
+        [Parameter(Mandatory=$true)] $Message
+    )
+
+    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss K")> $Message"
+}
+
+function Validate-CSV {
+    param(
+        [Parameter(Mandatory=$true)][String] $CSVFile
+    )
+    # Make sure the CSV has all the required columns for what we need
+
+    $line = Get-Content $CSVFile -first 1
+
+    write-host $line
+    # Check if the first row contains headings we expect
+    if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
+    if ($line.Contains('"Comment"') -eq $false) { throw "Input CSV missing field: Comment" }
+    if ($line.Contains('"IncidentDate"') -eq $false) { throw "Input CSV missing field: IncidentDate" }
+    if ($line.Contains('"Tags"') -eq $false) { throw "Input CSV missing field: Tags" }
+    if ($line.Contains('"IncidentID"') -eq $false) { throw "Input CSV missing field: IncidentID" }
+    if ($line.Contains('"UpdateDate"') -eq $false) { throw "Input CSV missing field: UpdateDate" }
+    if ($line.Contains('"MeetingID"') -eq $false) { throw "Input CSV missing field: MeetingID" }
+    if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
+    if ($line.Contains('"TeacherGUIDs"') -eq $false) { throw "Input CSV missing field: TeacherGUIDs" }
+    if ($line.Contains('"ClassGUID"') -eq $false) { throw "Input CSV missing field: ClassGUID" }
+    if ($line.Contains('"Class"') -eq $false) { throw "Input CSV missing field: Class" }
+    if ($line.Contains('"PeriodIDs"') -eq $false) { throw "Input CSV missing field: PeriodIDs" }
+    if ($line.Contains('"Code"') -eq $false) { throw "Input CSV missing field: Code" }
+    if ($line.Contains('"ReasonCode"') -eq $false) { throw "Input CSV missing field: ReasonCode" }
+
+    return $true
+}
+
 function Get-CSV {
     param(
         [Parameter(Mandatory=$true)][String] $CSVFile
     )
 
-    return import-csv $CSVFile -header('SchoolID','IncidentID','IncidentDate','UpdateDate','StudentFirstName','StudentLastName','StudentGUID','StudentID','StudentMinistryID','StudentGrade','PeriodIDs','MeetingID','MeetingStartTime','MeetingEndTime','Class','ClassGUID','TeacherNames','TeacherGUIDs','Room','Code','ReasonCode','Reason','Comment','Tags') | Select -skip 1
+    if ((Validate-CSV $CSVFile) -eq $true) {
+        return import-csv $CSVFile -header('SchoolID','IncidentID','IncidentDate','UpdateDate','StudentFirstName','StudentLastName','StudentGUID','StudentID','StudentMinistryID','StudentGrade','PeriodIDs','MeetingID','MeetingStartTime','MeetingEndTime','Class','ClassGUID','TeacherNames','TeacherGUIDs','Room','Code','ReasonCode','Reason','Comment','Tags') | Select -skip 1
+    } else {
+        throw "CSV file is not valid - cannot continue"
+    }
 }
 
 function Convert-AttendanceReason {
@@ -211,14 +253,6 @@ function Convert-BlockID {
     return -1
 }
 
-function Write-Log
-{
-    param(
-        [Parameter(Mandatory=$true)] $Message
-    )
-
-    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss K")> $Message"
-}
 
 ###########################################################################
 # Script initialization                                                   #
@@ -259,6 +293,13 @@ if (Test-Path $InputFileName)
 }
 
 ###########################################################################
+# Load the given CSV in, but don't process it yet                         #
+###########################################################################
+
+Write-Log "Loading and validating input CSV file..."
+$CSVInputFile = Get-CSV -CSVFile $InputFileName
+
+###########################################################################
 # Collect required info from the SL database                              #
 ###########################################################################
 
@@ -279,7 +320,7 @@ Write-Log "Processing input file..."
 
 $AttendanceToImport = @{}
 
-foreach ($InputRow in Get-CSV -CSVFile $InputFileName)
+foreach ($InputRow in $CSVInputFile)
 {
     # We don't care about "presents" so ignore those
     # We may have to come back and have a "present" cancel out an absence or something... but for now, just ignore them
