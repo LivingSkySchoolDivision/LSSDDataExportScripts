@@ -2,20 +2,8 @@ param (
     [Parameter(Mandatory=$true)][string]$InputDirectory,
     [Parameter(Mandatory=$true)][string]$OutputFileName,
     [Parameter(Mandatory=$true)][string]$FileFilter,
-    [Parameter(Mandatory=$true)][string]$SkipLines
+    [string]$HeaderLines = 1
  )
-
-function Get-CSV {
-    param(
-        [Parameter(Mandatory=$true)][String] $CSVFile
-    )
-
-    return import-csv $CSVFile | Select-Object -skip $SkipLines
-}
-
-# CSV Delimeter
-# Some systems expect this to be a tab "`t" or a pipe "|".
-$Delimeter = ','
 
 # Check if the output file exists, and if it does, delete it
 if (Test-Path $OutputFileName) 
@@ -25,15 +13,42 @@ if (Test-Path $OutputFileName)
 
 write-host "Reading all csv files in `"$InputDirectory`" with filter `"$FileFilter`""
 
+# Get the file headings of each file, and make sure they all match
+# Save the file headings for later use
+
+if ($HeaderLines -gt 0) {
+    $FileHeadingsRow = ""
+
+    Get-ChildItem -Path $InputDirectory -Filter $FileFilter | ForEach-Object {           
+        $firstline = Get-Content $_.FullName -first 1
+
+        Write-Output "Inspecting $($_.FullName)..."    
+        if ($FileHeadingsRow -eq "") { 
+            $FileHeadingsRow = $firstline
+        } else {
+            if ($firstline.Equals($FileHeadingsRow) -eq $false) {
+                throw "Headings of file `"$_.FullName`" does not match. Aborting."
+            }
+        }
+    }
+}
+
+$file = [system.io.file]::OpenWrite("$($pwd.Path)\$OutputFileName")
+$writer = New-Object System.IO.StreamWriter($file)
+
+# Write the file headings
+if ($HeaderLines -gt 0) {
+    $writer.WriteLine($FileHeadingsRow)
+}
+
 Get-ChildItem -Path $InputDirectory -Filter $FileFilter | ForEach-Object {           
     $fileOutputRows = @()
 
     Write-Output "Processing $($_.FullName)..."     
-    $inputrecords = @(Get-CSV -CSVFile $_.FullName)    
-    foreach($record in $inputrecords)
-    {    
-        $fileOutputRows += $record                
-    }            
-
-    $fileOutputRows | ForEach-Object {[PSCustomObject]$_} | export-csv -Path ($OutputFileName) -Append -notypeinformation -Delimiter $Delimeter
+    (cat $($_.FullName) | Select-Object -Skip $HeaderLines) | ForEach-Object { $writer.WriteLine($_) }
 }
+
+$writer.Close()
+$file.Close()
+
+Write-Output "Done!"
