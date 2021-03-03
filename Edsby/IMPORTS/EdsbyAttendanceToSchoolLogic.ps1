@@ -1,11 +1,11 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
-    [bool]$PerformDeletes,
-    [bool]$DryDelete,
-    [bool]$DryRun,
-    [bool]$AllowSyncToEmptyTable,
-    [bool]$DisableSafeties
+    [switch]$PerformDeletes,
+    [switch]$DryDelete,
+    [switch]$DryRun,
+    [switch]$AllowSyncToEmptyTable,
+    [switch]$DisableSafeties
  )
 
 ###########################################################################
