@@ -41,7 +41,6 @@ $SqlQuery = "SELECT
                     'Sister', 
                     'Self', 
                     'Sibling', 
-                    'Social Worker', 
                     'Wife', 
                     'Cousin', 
                     'Nurse', 
