@@ -33,7 +33,8 @@ if ($HeaderLines -gt 0) {
     }
 }
 
-$file = [system.io.file]::OpenWrite("$($pwd.Path)\$OutputFileName")
+
+$file = [system.io.file]::OpenWrite($OutputFileName)
 $writer = New-Object System.IO.StreamWriter($file)
 
 # Write the file headings
