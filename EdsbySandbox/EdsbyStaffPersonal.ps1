@@ -9,8 +9,7 @@ param (
 
 # Edsby allows us to sync roughly a dozen schools to the Sandbox
 # The ActiveSchools.csv can be used to adjust the schools we want to send
-$ActiveSchools = Import-Csv -Path .\ActiveSchools.csv
-$ActiveSchools = $ActiveSchools | Where-Object {$_.Sync -eq 'T'} 
+$ActiveSchools = Import-Csv -Path .\ActiveSchools.csv | Where-Object {$_.Sync -eq 'T'} 
 $iSchoolIDs = Foreach ($ID in $ActiveSchools) {
     if ($ID -ne $ActiveSchools[-1]) { $ID.iSchoolID + ',' } else { $ID.iSchoolID }    
 }
