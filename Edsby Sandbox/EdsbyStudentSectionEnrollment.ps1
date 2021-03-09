@@ -7,6 +7,14 @@ param (
 # Script configuration                       #
 ##############################################
 
+# Edsby allows us to sync roughly a dozen schools to the Sandbox
+# The ActiveSchools.csv can be used to adjust the schools we want to send
+$ActiveSchools = Import-Csv -Path .\ActiveSchools.csv
+$ActiveSchools = $ActiveSchools | Where-Object {$_.Sync -eq 'T'} 
+$iSchoolIDs = Foreach ($ID in $ActiveSchools) {
+    if ($ID -ne $ActiveSchools[-1]) { $ID.iSchoolID + ',' } else { $ID.iSchoolID }    
+}
+
 # SQL Query to run
 # The output CSV file will use column names from your SQL query.
 # Rename them using "as" - example: "SELECT cFirstName as FirstName FROM Students"
@@ -36,6 +44,7 @@ $SqlQuery = "SELECT
                 INNER JOIN CLASS C ON E.iClassID = C.iClassID
 				INNER JOIN StudentStatus SS ON E.iStudentID = SS.iStudentID
             WHERE
+                E.iSchoolID IN ($iSchoolIDs) AND
                 (iLV_CompletionStatusID=0 OR iLV_CompletionStatusID=3568) AND
                 (SS.dInDate <=  getDate() + 1) AND
                 ((SS.dOutDate < '1901-01-01') OR (SS.dOutDate >=  { fn CURDATE() })) AND
