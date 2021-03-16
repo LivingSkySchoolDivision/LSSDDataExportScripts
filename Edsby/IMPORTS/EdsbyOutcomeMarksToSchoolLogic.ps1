@@ -66,7 +66,8 @@ function Get-CSV {
 
 function Convert-ToSLOutcomeMark {
     param(
-        [Parameter(Mandatory=$true)] $InputRow
+        [Parameter(Mandatory=$true)] $InputRow,
+        [Parameter(Mandatory=$true)] $AllOutcomes
     )
     # Parse cMark vs nMark
     $cMark = ""
@@ -92,7 +93,7 @@ function Convert-ToSLOutcomeMark {
     return [PSCustomObject]@{
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
         iReportPeriodID = [int]0
-        iCourseObjectiveId = [int](Convert-ObjectiveID -OutcomeCode $InputRow.CriterionName -Objectives $SLCourseObjectives -iCourseID $InputRow.CourseCode)
+        iCourseObjectiveId = [int](Convert-ObjectiveID -OutcomeCode $InputRow.CriterionName -Objectives $AllOutcomes -iCourseID $InputRow.CourseCode)
         iCourseID = [int]$InputRow.CourseCode
         iSchoolID = [int]$InputRow.SchoolID
         nMark = [decimal]$nMark
@@ -249,7 +250,7 @@ foreach ($InputRow in $CSVInputFile)
     }
 
     # Assemble the final mark object
-    $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow
+    $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives
 
     if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
         $OutcomeMarksNeedingOutcomes += $InputRow
