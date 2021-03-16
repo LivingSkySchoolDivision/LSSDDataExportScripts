@@ -215,6 +215,7 @@ $SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID,
 $SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
 Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
 
+Write-Log "Processing course objectives from SchoolLogic DB..."
 # Put course objectives in a hashtable for easy lookups
 $SLCourseObjectives = @()
 
@@ -232,6 +233,7 @@ foreach($Obj in $SLCourseObjectives_Raw) {
     }
 }
 
+Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
 ###########################################################################
 # Process the file                                                        #
 ###########################################################################
@@ -274,12 +276,35 @@ Write-Log "Found $($OutcomeMarksToImport.Length) marks to import"
 Write-Log "Found $($OutcomeMarksNeedingOutcomes.Length) without matching outcomes in SchoolLogic"
 Write-Log "Found $($($OutcomeNotFound.Count)) outcomes that don't exist in our database."
 
+$SqlConnection = new-object System.Data.SqlClient.SqlConnection
+$SqlConnection.ConnectionString = $DBConnectionString
+
 if ($ImportUnknownOutcomes -eq $true) {
-# Insert new outcomes that didn't exist in SL before
+    # Insert new outcomes that didn't exist in SL before
+    foreach ($NewOutcome in $OutcomeNotFound.Values) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = "INSERT INTO CourseObjective(lImportedFromEdsby,OutcomeCode,OutcomeText,iCourseID,cSubject,mNotes,iLV_ObjectiveCategoryID)
+                                        VALUES(1,@OUTCOMECODE,@OUTCOMETEXT,@ICOURSEID,@CSUBJECT,@MNOTES,@CATEGORYID);"
+        $SqlCommand.Parameters.AddWithValue("@OUTCOMECODE",$NewOutcome.iBlockNumber) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@OUTCOMETEXT",$NewOutcome.iStudentID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ICOURSEID",$NewOutcome.iAttendanceStatusID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CSUBJECT",$NewOutcome.iAttendanceReasonsID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MNOTES",$NewOutcome.dDate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CATEGORYID",$NewOutcome.iClassID) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
 
-# Re-import outcomes from SchoolLogic
+        $SqlConnection.open()
+        if ($DryRun -ne $true) {
+            $Sqlcommand.ExecuteNonQuery()
+        } else {
+            Write-Log " (Skipping SQL query due to -DryRun)"
+        }
+        $SqlConnection.close()
+    }
 
-# Reprocess marks that didn't have matching outcomes before
+    # Re-import outcomes from SchoolLogic
+
+    # Reprocess marks that didn't have matching outcomes before
 } else {
     Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Length) marks due to missing outcomes."
 }
