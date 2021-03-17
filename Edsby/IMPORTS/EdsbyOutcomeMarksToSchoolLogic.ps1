@@ -27,12 +27,14 @@ function Validate-CSV {
     $line = Get-Content $CSVFile -first 1
 
     # Check if the first row contains headings we expect
-    if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
     if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
+    if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
     if ($line.Contains('"CourseCode"') -eq $false) { throw "Input CSV missing field: CourseCode" }
     if ($line.Contains('"CriterionName"') -eq $false) { throw "Input CSV missing field: CriterionName" }
+    if ($line.Contains('"CriterionDesc"') -eq $false) { throw "Input CSV missing field: CriterionDesc" }
     if ($line.Contains('"Grade"') -eq $false) { throw "Input CSV missing field: Grade" }
-    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }    
+    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }  
+    if ($line.Contains('"ReportingTermNumber"') -eq $false) { throw "Input CSV missing field: ReportingTermNumber" }    
     return $true
 }
 Function Get-Hash
@@ -64,14 +66,23 @@ function Get-CSV {
     }
 }
 
+function Convert-SectionID {
+    param(
+        [Parameter(Mandatory=$true)] $InputString,
+        [Parameter(Mandatory=$true)] $SchoolID
+    )
+    return $InputString.Replace("$SchoolID-","")
+}
+
 function Convert-ToSLOutcomeMark {
     param(
         [Parameter(Mandatory=$true)] $InputRow,
-        [Parameter(Mandatory=$true)] $AllOutcomes
+        [Parameter(Mandatory=$true)] $AllOutcomes,
+        [Parameter(Mandatory=$true)] $AllReportPeriods
     )
     # Parse cMark vs nMark
     $cMark = ""
-    $nMark = ""
+    $nMark = [decimal]0.0
 
     if ([bool]($InputRow.Grade -as [decimal]) -eq $true) {
         $nMark = [decimal]$InputRow.Grade
@@ -90,15 +101,27 @@ function Convert-ToSLOutcomeMark {
         $cMark = $InputRow.Grade
     }
 
-    return [PSCustomObject]@{
+    $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
+    $Number = [int]($InputRow.ReportingTermNumber)
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
+    #write-host "$($iClassID) + $($Number) = $($iReportPeriodID)"
+
+
+    $NewOutcomeMark = [PSCustomObject]@{
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
-        iReportPeriodID = [int]0
+        iReportPeriodID = [int]$iReportPeriodID
         iCourseObjectiveId = [int](Convert-ObjectiveID -OutcomeCode $InputRow.CriterionName -Objectives $AllOutcomes -iCourseID $InputRow.CourseCode)
         iCourseID = [int]$InputRow.CourseCode
         iSchoolID = [int]$InputRow.SchoolID
         nMark = [decimal]$nMark
         cMark = [string]$cMark
     }
+
+    if ($NewOutcomeMark.iReportPeriodID -eq -1) {
+        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
+    }
+
+    return $NewOutcomeMark
 }
 
 function Convert-StudentID {
@@ -151,6 +174,79 @@ function Convert-ObjectiveID {
 
     return -1
 }
+function Convert-ObjectivesToHashtable {
+    param(
+        [Parameter(Mandatory=$true)] $Objectives
+    )
+    $Output = @()
+
+    foreach($Obj in $Objectives) {
+        if (($Obj.OutcomeCode -ne "") -and ($null -ne $Obj.OutcomeCode)) {
+                $Outcome = [PSCustomObject]@{
+                OutcomeCode = $Obj.OutcomeCode
+                OutcomeText = $Obj.OutcomeText
+                iCourseObjectiveID = $Obj.iCourseObjectiveID
+                iCourseID = $Obj.iCourseID
+                cSubject = $Obj.cSubject
+            }
+            $Output += $Outcome
+            
+        }
+    }
+
+    return $Output
+
+}
+
+
+function Convert-ClassReportPeriodsToHashtable {
+    param(
+        [Parameter(Mandatory=$true)] $AllClassReportPeriods
+    )
+
+    $Output = @{}
+
+    foreach($RP in $AllClassReportPeriods) {
+        if ($null -ne $RP) {
+            if ($RP.iClassID -gt 0) {
+                if ($Output.ContainsKey($RP.iClassID) -eq $false) {
+                    $OutPut.Add($RP.iClassID, @())
+                }
+                $NewRP = [PSCustomObject]@{
+                    iClassID = $RP.iClassID; 
+                    iTrackID = $RP.iTrackID;
+                    iReportPeriodID = $RP.iReportPeriodID;
+                    cName = $RP.cName;
+                    dStartDate = $RP.dStartDate;
+                    dEndDate = $RP.dEndDate;
+                }                
+                $Output[$RP.iClassID] += $NewRP;
+            }
+        }
+    }
+
+    return $Output
+}
+
+function Get-ReportPeriodID {
+    param(
+        [Parameter(Mandatory=$true)] [int]$iClassID,
+        [Parameter(Mandatory=$true)] [int]$Number,
+        [Parameter(Mandatory=$true)] $AllClassReportPeriods
+    ) 
+
+    if ($Number -gt 0) {
+        if ($AllClassReportPeriods.ContainsKey($iClassID)) {  
+            if ($AllClassReportPeriods[$iClassID].Length -ge ($Number)) {
+                return $($AllClassReportPeriods[$iClassID][$Number-1]).iReportPeriodID
+            }
+        }
+    }
+
+    return -1
+}
+
+
 
 ###########################################################################
 # Script initialization                                                   #
@@ -166,8 +262,27 @@ if ($ImportUnknownOutcomes -eq $true) {
     Write-Log "When encountering a mark for an outcome that doesn't exist in SchoolLogic, script will: Ignore those marks"
 }
 
-Write-Log "Loading config file..."
+$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective"
+$SQLQuery_ClassReportPeriods = "SELECT 
+                                    Class.iClassID,
+                                    Track.iTrackID,
+                                    ReportPeriod.iReportPeriodID,
+                                    ReportPeriod.cName,
+                                    ReportPEriod.dStartDate,
+                                    ReportPEriod.dEndDate
+                                FROM
+                                    Class
+                                    LEFT OUTER JOIN Track ON Class.iTrackID=Track.iTrackID
+                                    LEFT OUTER JOIN Term ON Track.iTrackID=Term.iTrackID
+                                    LEFT OUTER JOIN ReportPeriod ON Term.iTermID=ReportPeriod.iTermID
+                                WHERE
+                                    ReportPeriod.iReportPeriodID IS NOT NULL
+                                ORDER BY
+                                    Track.iTrackID,
+                                    ReportPEriod.dEndDate"
 
+
+Write-Log "Loading config file..."
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
 if ($AdjustedConfigFilePath.Length -le 0) {
@@ -209,31 +324,15 @@ $CSVInputFile = Get-CSV -CSVFile $InputFileName
 
 Write-Log "Loading required data from SchoolLogic DB..."
 
-$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective"
-
-# Convert to hashtables for easier consumption
+Write-Log "Loading and processing course objectives..."
 $SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
 Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
-
-Write-Log "Processing course objectives from SchoolLogic DB..."
-# Put course objectives in a hashtable for easy lookups
-$SLCourseObjectives = @()
-
-foreach($Obj in $SLCourseObjectives_Raw) {
-    if (($Obj.OutcomeCode -ne "") -and ($null -ne $Obj.OutcomeCode)) {
-            $Outcome = [PSCustomObject]@{
-            OutcomeCode = $Obj.OutcomeCode
-            OutcomeText = $Obj.OutcomeText
-            iCourseObjectiveID = $Obj.iCourseObjectiveID
-            iCourseID = $Obj.iCourseID
-            cSubject = $Obj.cSubject
-        }
-        $SLCourseObjectives += $Outcome
-        
-    }
-}
-
+$SLCourseObjectives = Convert-ObjectivesToHashtable -Objectives $SLCourseObjectives_Raw
 Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
+Write-Log "Loading and processing class report periods..."
+$ClassReportPeriods = Convert-ClassReportPeriodsToHashtable -AllClassReportPeriods $(Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassReportPeriods)
+Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes."
+
 ###########################################################################
 # Process the file                                                        #
 ###########################################################################
@@ -252,7 +351,7 @@ foreach ($InputRow in $CSVInputFile)
     }
 
     # Assemble the final mark object
-    $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives
+    $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods 
 
     if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
         $OutcomeMarksNeedingOutcomes += $InputRow
@@ -273,29 +372,39 @@ foreach ($InputRow in $CSVInputFile)
 }
 
 Write-Log "Found $($OutcomeMarksToImport.Length) marks to import"
-Write-Log "Found $($OutcomeMarksNeedingOutcomes.Length) without matching outcomes in SchoolLogic"
-Write-Log "Found $($($OutcomeNotFound.Count)) outcomes that don't exist in our database."
+if ($OutcomeMarksNeedingOutcomes.Length -gt 0) {
+    Write-Log "Found $($OutcomeMarksNeedingOutcomes.Length) without matching outcomes in SchoolLogic"
+}
+if ($OutcomeNotFound.Count -gt 0) {
+    Write-Log "Found $($OutcomeNotFound.Count) outcomes that don't exist in our database."
+}
 
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
-if ($ImportUnknownOutcomes -eq $true) {
+
+if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
+        
+    $OutcomeMarksNeedingOutcomes_Two = @()
+    $OutcomeNotFound_Two = @{}
+
     # Insert new outcomes that didn't exist in SL before
     foreach ($NewOutcome in $OutcomeNotFound.Values) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
         $SqlCommand.CommandText = "INSERT INTO CourseObjective(lImportedFromEdsby,OutcomeCode,OutcomeText,iCourseID,cSubject,mNotes,iLV_ObjectiveCategoryID)
                                         VALUES(1,@OUTCOMECODE,@OUTCOMETEXT,@ICOURSEID,@CSUBJECT,@MNOTES,@CATEGORYID);"
-        $SqlCommand.Parameters.AddWithValue("@OUTCOMECODE",$NewOutcome.iBlockNumber) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@OUTCOMETEXT",$NewOutcome.iStudentID) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@ICOURSEID",$NewOutcome.iAttendanceStatusID) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@CSUBJECT",$NewOutcome.iAttendanceReasonsID) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@MNOTES",$NewOutcome.dDate) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@CATEGORYID",$NewOutcome.iClassID) | Out-Null
+
+        $SqlCommand.Parameters.AddWithValue("@OUTCOMECODE",$NewOutcome.OutcomeCode) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@OUTCOMETEXT",$NewOutcome.OutcomeText) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ICOURSEID",$NewOutcome.iCourseID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CSUBJECT",$NewOutcome.cSubject) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MNOTES",$NewOutcome.mNotes) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CATEGORYID",$NewOutcome.iLV_ObjectiveCategoryID) | Out-Null
         $SqlCommand.Connection = $SqlConnection
 
         $SqlConnection.open()
         if ($DryRun -ne $true) {
-            $Sqlcommand.ExecuteNonQuery()
+            $Sqlcommand.ExecuteNonQuery() | Out-Null
         } else {
             Write-Log " (Skipping SQL query due to -DryRun)"
         }
@@ -303,8 +412,74 @@ if ($ImportUnknownOutcomes -eq $true) {
     }
 
     # Re-import outcomes from SchoolLogic
+    Write-Log "Reloading outcomes from SchoolLogic..."
+    $SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
+    Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
+    Write-Log "Processing course objectives from SchoolLogic DB..."
+    $SLCourseObjectives = Convert-ObjectivesToHashtable -Objectives $SLCourseObjectives_Raw
+    Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
 
     # Reprocess marks that didn't have matching outcomes before
+    foreach ($InputRow in $OutcomeMarksNeedingOutcomes)
+    {    
+        # Assemble the final mark object
+        $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods 
+    
+        if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
+            $OutcomeMarksNeedingOutcomes_Two += $InputRow
+
+            $Fingerprint = (Get-Hash -String ("$($InputRow.CourseCode)$($InputRow.CriterionName)"))
+            if ($OutcomeNotFound_Two.ContainsKey($Fingerprint) -eq $false) {
+                $OutcomeNotFound_Two.Add($Fingerprint,[PSCustomObject]@{
+                    iCourseID = [int]$InputRow.CourseCode
+                    OutcomeCode = [string]$InputRow.CriterionName
+                    OutcomeText = [string]$InputRow.CriterionDesc
+                    cSubject = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
+                    mNotes = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
+                    iLV_ObjectiveCategoryID = 4146
+                })
+
+            }
+        } else {
+            $OutcomeMarksToImport += ($NewOutcomeMark)
+        }
+    }
+
+    Write-Log "Now $($OutcomeMarksToImport.Length) marks to import"
+    Write-Log "Now $($OutcomeMarksNeedingOutcomes_Two.Length) without matching outcomes in SchoolLogic"
+    Write-Log "Now $($($OutcomeNotFound_Two.Count)) outcomes that don't exist in our database."
+
 } else {
-    Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Length) marks due to missing outcomes."
+    if ($($OutcomeMarksNeedingOutcomes.Length) -gt 0) {
+        Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Length) marks due to missing outcomes."
+    }
 }
+
+###########################################################################
+# Import the outcome marks                                                #
+###########################################################################
+
+Write-Log "Inserting outcome marks into SchoolLogic..."
+foreach($M in $OutcomeMarksToImport) {
+    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+    $SqlCommand.CommandText = "INSERT INTO StudentCourseObjective(iStudentID, iReportPeriodID, iCourseObjectiveID, iCourseID, iSchoolID, nMark, cMark)
+                                    VALUES(@STUDENTID, @REPID, @OBJECTIVEID, @COURSEID, @SCHOOLID, @NMARK, @CMARK);"
+
+    $SqlCommand.Parameters.AddWithValue("@STUDENTID",$M.iStudentID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@REPID",$M.iReportPeriodID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@OBJECTIVEID",$M.iCourseObjectiveId) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@COURSEID",$M.iCourseID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@SCHOOLID",$M.iSchoolID) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@NMARK",$M.nMark) | Out-Null
+    $SqlCommand.Parameters.AddWithValue("@CMARK",$M.cMark) | Out-Null
+    $SqlCommand.Connection = $SqlConnection
+
+    $SqlConnection.open()
+    if ($DryRun -ne $true) {
+        $Sqlcommand.ExecuteNonQuery() | Out-Null
+    } else {
+        Write-Log " (Skipping SQL query due to -DryRun)"
+    }
+    $SqlConnection.close()
+}
+Write-Log "Done!"
