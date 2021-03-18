@@ -462,7 +462,18 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
 Write-Log "Inserting outcome marks into SchoolLogic..."
 foreach($M in $OutcomeMarksToImport) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO StudentCourseObjective(iStudentID, iReportPeriodID, iCourseObjectiveID, iCourseID, iSchoolID, nMark, cMark)
+    $SqlCommand.CommandText = " UPDATE StudentCourseObjective 
+                                SET 
+                                    nMark=@NMARK, 
+                                    cMark=@CMARK 
+                                WHERE 
+                                    iStudentID=@STUDENTID 
+                                    AND iCourseObjectiveID=@OBJECTIVEID 
+                                    AND iReportPeriodID=@REPID 
+                                    AND iCourseID=@COURSEID
+                                IF @@ROWCOUNT = 0 
+                                INSERT INTO 
+                                    StudentCourseObjective(iStudentID, iReportPeriodID, iCourseObjectiveID, iCourseID, iSchoolID, nMark, cMark)
                                     VALUES(@STUDENTID, @REPID, @OBJECTIVEID, @COURSEID, @SCHOOLID, @NMARK, @CMARK);"
 
     $SqlCommand.Parameters.AddWithValue("@STUDENTID",$M.iStudentID) | Out-Null
