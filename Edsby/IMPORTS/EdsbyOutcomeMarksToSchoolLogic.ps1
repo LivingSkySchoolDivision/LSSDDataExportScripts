@@ -343,6 +343,7 @@ $OutcomeMarksToImport = @()
 $OutcomeMarksNeedingOutcomes = @()
 $OutcomeNotFound = @{}
 
+$OMProcessCounter = 0
 foreach ($InputRow in $CSVInputFile)
 {
     # If there is no grade, ignore
@@ -363,11 +364,17 @@ foreach ($InputRow in $CSVInputFile)
                 OutcomeText = [string]$InputRow.CriterionDesc
                 cSubject = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
                 mNotes = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
-                iLV_ObjectiveCategoryID = 4146
+                iLV_ObjectiveCategoryID = 4146 # This number is used to distinguish normal outcomes from SLB outcomes
             })
         }
     } else {
         $OutcomeMarksToImport += ($NewOutcomeMark)
+    }
+
+    $OMProcessCounter++
+    $PercentComplete = [int]([decimal]($OMProcessCounter/$CSVInputFile.Length) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Processing input file" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
     }
 }
 
@@ -389,6 +396,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
     $OutcomeNotFound_Two = @{}
 
     # Insert new outcomes that didn't exist in SL before
+    $OInsertCounter = 0
     foreach ($NewOutcome in $OutcomeNotFound.Values) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
         $SqlCommand.CommandText = "INSERT INTO CourseObjective(lImportedFromEdsby,OutcomeCode,OutcomeText,iCourseID,cSubject,mNotes,iLV_ObjectiveCategoryID)
@@ -409,6 +417,12 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
             Write-Log " (Skipping SQL query due to -DryRun)"
         }
         $SqlConnection.close()
+
+        $OInsertCounter++        
+        $PercentComplete = [int]([decimal]($OInsertCounter/$OutcomeNotFound.Values.Length) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Inserting outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        }
     }
 
     # Re-import outcomes from SchoolLogic
@@ -460,6 +474,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
 ###########################################################################
 
 Write-Log "Inserting outcome marks into SchoolLogic..."
+$OMInsertCounter = 0
 foreach($M in $OutcomeMarksToImport) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
     $SqlCommand.CommandText = " UPDATE StudentCourseObjective 
@@ -492,5 +507,11 @@ foreach($M in $OutcomeMarksToImport) {
         Write-Log " (Skipping SQL query due to -DryRun)"
     }
     $SqlConnection.close()
+
+    $OMInsertCounter++
+    $PercentComplete = [int]([decimal]($OMInsertCounter/$OutcomeMarksToImport.Count) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Inserting outcome marks" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+    }
 }
 Write-Log "Done!"
