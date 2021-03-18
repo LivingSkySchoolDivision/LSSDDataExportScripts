@@ -137,8 +137,6 @@ function Convert-ToSLMark {
     $Number = [int]($InputRow.ReportingTermNumber)
     $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
 
-    $ThisClassCredits = (Get-ClassCredits -AllClassCredits $AllClassCredits -iClassID $iClassID)
-
     $NewMark = [PSCustomObject]@{
         iReportPeriodID = [int]$iReportPeriodID
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
