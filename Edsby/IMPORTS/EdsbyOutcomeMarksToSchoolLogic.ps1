@@ -419,7 +419,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         $SqlConnection.close()
 
         $OInsertCounter++        
-        $PercentComplete = [int]([decimal]($OInsertCounter/$OutcomeNotFound.Values.Length) * 100)
+        $PercentComplete = [int]([decimal](($OInsertCounter)/[decimal]($OutcomeNotFound.Values.Count)) * 100)
         if ($PercentComplete % 5 -eq 0) {
             Write-Progress -Activity "Inserting outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
         }
