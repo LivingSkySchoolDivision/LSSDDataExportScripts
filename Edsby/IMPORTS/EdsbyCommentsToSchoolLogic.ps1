@@ -77,27 +77,6 @@ function Convert-ToComment {
         [Parameter(Mandatory=$true)] $AllReportPeriods
     )
 
-    # Parse cMark vs nMark
-    $cMark = ""
-    $nMark = [decimal]0.0
-
-    if ([bool]($InputRow.OverallMark -as [decimal]) -eq $true) {
-        $nMark = [decimal]$InputRow.OverallMark
-        if (
-            ($nMark -eq 1) -or
-            ($nMark -eq 1.5) -or
-            ($nMark -eq 2) -or
-            ($nMark -eq 2.5) -or
-            ($nMark -eq 3) -or
-            ($nMark -eq 3.5) -or
-            ($nMark -eq 4)
-        ) {
-            $cMark = [string]$nMark
-        }
-    } else {
-        $cMark = $InputRow.OverallMark
-    }
-
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
     $Number = [int]($InputRow.ReportingTermNumber)
     $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
