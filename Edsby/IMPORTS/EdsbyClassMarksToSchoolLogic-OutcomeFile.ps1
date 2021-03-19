@@ -357,10 +357,10 @@ foreach ($InputRow in $CSVInputFile)
     }
 
     # Assemble the final mark object
-    $NewOutcomeMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
+    $NewMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
 
-    if (($NewOutcomeMark.nMark -gt 1) -or ($NewOutcomeMark.cMark -ne "")) {
-        $MarksToImport_Raw += $NewOutcomeMark
+    if (($NewMark.nMark -gt 1) -or ($NewMark.cMark -ne "")) {
+        $MarksToImport_Raw += $NewMark
     }
     
     $OMProcessCounter++
@@ -405,10 +405,10 @@ $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
 ###########################################################################
-# Import the outcome marks                                                #
+# Import the marks                                                        #
 ###########################################################################
 
-Write-Log "Inserting outcome marks into SchoolLogic..."
+Write-Log "Inserting class marks into SchoolLogic..."
 $OMInsertCounter = 0
 foreach($M in $MarksToImport) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
