@@ -178,7 +178,7 @@ function Convert-ObjectivesToHashtable {
     param(
         [Parameter(Mandatory=$true)] $Objectives
     )
-    $Output = @()
+    $Output = New-Object -TypeName "System.Collections.ArrayList"
 
     foreach($Obj in $Objectives) {
         if (($Obj.OutcomeCode -ne "") -and ($null -ne $Obj.OutcomeCode)) {
@@ -210,7 +210,7 @@ function Convert-ClassReportPeriodsToHashtable {
         if ($null -ne $RP) {
             if ($RP.iClassID -gt 0) {
                 if ($Output.ContainsKey($RP.iClassID) -eq $false) {
-                    $OutPut.Add($RP.iClassID, @())
+                    $OutPut.Add($RP.iClassID, (New-Object -TypeName "System.Collections.ArrayList"))
                 }
                 $NewRP = [PSCustomObject]@{
                     iClassID = $RP.iClassID; 
@@ -339,8 +339,8 @@ Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes.
 
 Write-Log "Processing input file..."
 Write-Log " Rows to process: $($CSVInputFile.Length)"
-$OutcomeMarksToImport = @()
-$OutcomeMarksNeedingOutcomes = @()
+$OutcomeMarksToImport = New-Object -TypeName "System.Collections.ArrayList"
+$OutcomeMarksNeedingOutcomes = New-Object -TypeName "System.Collections.ArrayList"
 $OutcomeNotFound = @{}
 
 $OMProcessCounter = 0
@@ -392,7 +392,7 @@ $SqlConnection.ConnectionString = $DBConnectionString
 
 if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         
-    $OutcomeMarksNeedingOutcomes_Two = @()
+    $OutcomeMarksNeedingOutcomes_Two = New-Object -TypeName "System.Collections.ArrayList"
     $OutcomeNotFound_Two = @{}
 
     # Insert new outcomes that didn't exist in SL before
