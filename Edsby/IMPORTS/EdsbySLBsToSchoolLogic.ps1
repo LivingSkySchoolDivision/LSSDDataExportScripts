@@ -26,18 +26,19 @@ function Validate-CSV {
 
     $line = Get-Content $CSVFile -first 1
 
-    # Check if the first row contains headings we expect    
-    if ($line.Contains('"ReportingTermNumber"') -eq $false) { throw "Input CSV missing field: ReportingTermNumber" }  
+    # Check if the first row contains headings we expect
+    if ($line.Contains('"ReportingTermNumber"') -eq $false) { throw "Input CSV missing field: ReportingTermNumber" }
     if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
     if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
     if ($line.Contains('"Citizenship"') -eq $false) { throw "Input CSV missing field: Citizenship" }
     if ($line.Contains('"Collaboration"') -eq $false) { throw "Input CSV missing field: Collaboration" }
     if ($line.Contains('"Engagement"') -eq $false) { throw "Input CSV missing field: Engagement" }
     if ($line.Contains('"Discipline"') -eq $false) { throw "Input CSV missing field: Discipline" }
-    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }    
+    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }
     return $true
-
 }
+
+
 Function Get-Hash
 {
     param
@@ -81,13 +82,18 @@ function Convert-IndividualSLBMark {
         [Parameter(Mandatory=$true)] $OutcomeName,
         [Parameter(Mandatory=$true)] $MarkFieldName
     )
-    
+
     # Parse cMark vs nMark
     $cMark = ""
     $nMark = [decimal]0.0
 
-    if ([bool]($InputRow.OverallMark -as [decimal]) -eq $true) {
-        $nMark = [decimal]$InputRow.OverallMark
+    $ThisOutcomeMark = $($InputRow.$MarkFieldName)
+    if (($ThisOutcomeMark.Length -eq 0) -or ($null -eq $ThisOutcomeMark) -or ($ThisOutcomeMark -eq "")) {
+        return $null
+    }
+
+    if ([bool]($ThisOutcomeMark -as [decimal]) -eq $true) {
+        $nMark = [decimal]$ThisOutcomeMark
         if (
             ($nMark -eq 1) -or
             ($nMark -eq 1.5) -or
@@ -100,20 +106,26 @@ function Convert-IndividualSLBMark {
             $cMark = [string]$nMark
         }
     } else {
-        $cMark = $InputRow.OverallMark
+        $cMark = $ThisOutcomeMark
     }
+
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
     $Number = [int]($InputRow.ReportingTermNumber)
     $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
 
+    $OutcomeCode = "$($OutcomeName.ToUpper())-$($InputRow.CourseCode)";
+
     $NewMark = [PSCustomObject]@{
-        iReportPeriodID = [int]$iReportPeriodID
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
-        iClassID = $iClassID
+        iReportPeriodID = [int]$iReportPeriodID
+        iCourseObjectiveID = [int](Convert-ObjectiveID -OutcomeCode $OutcomeCode -Objectives $AllOutcomes -iCourseID $InputRow.CourseCode)
+        iCourseID = [int]$($InputRow.CourseCode)
         iSchoolID = $InputRow.SchoolID
-        cMark = $cMark
-        nMark = $nMark
+        cMark = [string]$cMark
+        nMark = [decimal]$nMark
+        OutcomeName = $OutcomeName
+        OutcomeCode = $OutcomeCode
     }
 
     if ($NewMark.iReportPeriodID -eq -1) {
@@ -122,6 +134,93 @@ function Convert-IndividualSLBMark {
 
     return $NewMark
 
+}
+
+function Get-SLBText
+{
+    param(
+        [Parameter(Mandatory=$true)][int] $CourseID,
+        [Parameter(Mandatory=$true)][String] $OutcomeName,
+        [Parameter(Mandatory=$true)] $AllCourseGrades
+
+    )
+
+    # Get grade level of the given course
+    $GradeLevel = -1;
+    if ($AllCourseGrades.ContainsKey($CourseID)) {
+        $GradeLevel = $AllCourseGrades[$CourseID]
+    }
+
+    # Try to process what the outcome text would be for that grade.
+    if ($GradeLevel -ne -1) {
+        if (
+            ($GradeLevel -eq "pk") -or
+            ($GradeLevel -eq "0k") -or
+            ($GradeLevel -eq "01") -or
+            ($GradeLevel -eq "02") -or
+            ($GradeLevel -eq "03") -or
+            ($GradeLevel -eq "04") -or
+            ($GradeLevel -eq "05") -or
+            ($GradeLevel -eq "06")
+        )
+        {
+            if ($OutcomeName -like "CITIZENSHIP") {
+                return "Respectful, shows caring, takes responsibility for actions."
+            }
+            if ($OutcomeName -like "COLLABORATIVE") {
+                return "Willing to work with all classmates, encourages and includes others."
+            }
+            if ($OutcomeName -like "ENGAGEMENT") {
+                return "Wants to learn and keeps trying when the work gets hard."
+            }
+            if ($OutcomeName -like "SELF-DIRECTED") {
+                return "Takes initiative, completes tasks, strong work habits."
+            }
+        }
+        if (
+            ($GradeLevel -eq "07") -or
+            ($GradeLevel -eq "08") -or
+            ($GradeLevel -eq "09")
+        )
+        {
+            if ($OutcomeName -like "CITIZENSHIP") {
+                return "Respectful to others and property, takes responsibility for actions and decisions."
+            }
+            if ($OutcomeName -like "COLLABORATIVE") {
+                return "Willing to work with all classmates, encourages and includes others."
+            }
+            if ($OutcomeName -like "ENGAGEMENT") {
+                return "Involved in the learning tasks."
+            }
+            if ($OutcomeName -like "SELF-DIRECTED") {
+                return "Takes initiative, completes tasks, strong work habits."
+            }
+
+        }
+        if (
+            ($GradeLevel -eq "10") -or
+            ($GradeLevel -eq "11") -or
+            ($GradeLevel -eq "12")
+        )
+        {
+            if ($OutcomeName -like "CITIZENSHIP") {
+                return "Respectful, responsible, academically honest."
+            }
+            if ($OutcomeName -like "COLLABORATIVE") {
+                return "Offers and receives ideas while working with others."
+            }
+            if ($OutcomeName -like "ENGAGEMENT") {
+                return "Involved in the learning tasks."
+            }
+            if ($OutcomeName -like "SELF-DIRECTED") {
+                return "Takes initiative, completes tasks, strong work habits."
+            }
+        }
+
+        return "$OutcomeName for grade $GradeLevel"
+    }
+
+    return "UNKNOWN OUTCOME FOR COURSE $($CourseID) AND GRADE $($GradeLevel) PLEASE CONTACT SIS SUPPORT DESK"
 }
 
 function Convert-ToSLB {
@@ -137,25 +236,25 @@ function Convert-ToSLB {
     $Output = New-Object -TypeName "System.Collections.ArrayList"
 
     # Parse Citizenship mark
-    $Mark_Citizenship = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "Citizenship" -MarkFieldName "Citizenship"
+    $Mark_Citizenship = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "CITIZENSHIP" -MarkFieldName "Citizenship"
     if ($null -ne $Mark_Citizenship) {
         $Output += $Mark_Citizenship
     }
 
     # Parse Collaboration mark
-    $Mark_Collaboration = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "Collaboration" -MarkFieldName "Collaboration"
+    $Mark_Collaboration = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "COLLABORATIVE" -MarkFieldName "Collaboration"
     if ($null -ne $Mark_Collaboration) {
         $Output += $Mark_Collaboration
     }
-    
+
     # Parse Engagement mark
-    $Mark_Engagement = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "Engagement" -MarkFieldName "Engagement"
+    $Mark_Engagement = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "ENGAGEMENT" -MarkFieldName "Engagement"
     if ($null -ne $Mark_Engagement) {
         $Output += $Mark_Engagement
     }
 
     # Parse Self-Directed mark (which is erroneously named "Discipline" in the export file)
-    $Mark_SelfDirected = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "SelfDirected" -MarkFieldName "Discipline"
+    $Mark_SelfDirected = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "SELF-DIRECTED" -MarkFieldName "Discipline"
     if ($null -ne $Mark_SelfDirected) {
         $Output += $Mark_SelfDirected
     }
@@ -209,7 +308,7 @@ function Convert-ObjectiveID {
         {
             return $obj.iCourseObjectiveID
         }
-    } 
+    }
 
     return -1
 }
@@ -229,12 +328,30 @@ function Convert-ObjectivesToHashtable {
                 cSubject = $Obj.cSubject
             }
             $Output += $Outcome
-            
+
         }
     }
 
     return $Output
 
+}
+function Convert-CourseGradesToHashTable {
+    param(
+        [Parameter(Mandatory=$true)] $CourseGrades
+    )
+    $Output = @{}
+
+    foreach($Obj in $CourseGrades) {
+        if ($null -ne $Obj) {
+            if ($null -ne $Obj.iCourseID) {
+                if ($Output.ContainsKey($Obj.iCourseID) -eq $false) {
+                    $Output.Add($Obj.iCourseID, $Obj.cGrade)
+                }
+            }
+        }
+    }
+
+    return $Output
 }
 
 
@@ -252,13 +369,13 @@ function Convert-ClassReportPeriodsToHashtable {
                     $OutPut.Add($RP.iClassID, (New-Object -TypeName "System.Collections.ArrayList"))
                 }
                 $NewRP = [PSCustomObject]@{
-                    iClassID = $RP.iClassID; 
+                    iClassID = $RP.iClassID;
                     iTrackID = $RP.iTrackID;
                     iReportPeriodID = $RP.iReportPeriodID;
                     cName = $RP.cName;
                     dStartDate = $RP.dStartDate;
                     dEndDate = $RP.dEndDate;
-                }                
+                }
                 $Output[$RP.iClassID] += $NewRP;
             }
         }
@@ -272,10 +389,10 @@ function Get-ReportPeriodID {
         [Parameter(Mandatory=$true)] [int]$iClassID,
         [Parameter(Mandatory=$true)] [int]$Number,
         [Parameter(Mandatory=$true)] $AllClassReportPeriods
-    ) 
+    )
 
     if ($Number -gt 0) {
-        if ($AllClassReportPeriods.ContainsKey($iClassID)) {  
+        if ($AllClassReportPeriods.ContainsKey($iClassID)) {
             if ($AllClassReportPeriods[$iClassID].Length -ge ($Number)) {
                 return $($AllClassReportPeriods[$iClassID][$Number-1]).iReportPeriodID
             }
@@ -284,7 +401,6 @@ function Get-ReportPeriodID {
 
     return -1
 }
-
 
 
 ###########################################################################
@@ -301,8 +417,9 @@ if ($ImportUnknownOutcomes -eq $true) {
     Write-Log "When encountering a mark for an outcome that doesn't exist in SchoolLogic, script will: Ignore those marks"
 }
 
-$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective"
-$SQLQuery_ClassReportPeriods = "SELECT 
+$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective WHERE iLV_ObjectiveCategoryID=4150"
+$SQLQuery_CourseGrades = "SELECT iCourseID, LTRIM(RTRIM(Grades.cName)) as cGrade FROM COURSE LEFT OUTER JOIN Grades ON Course.iLow_GradesID=Grades.iGradesID"
+$SQLQuery_ClassReportPeriods = "SELECT
                                     Class.iClassID,
                                     Track.iTrackID,
                                     ReportPeriod.iReportPeriodID,
@@ -332,6 +449,7 @@ if ($AdjustedConfigFilePath.Length -le 0) {
 if ((test-path -Path $AdjustedConfigFilePath) -eq $false) {
     Throw "Config file not found. Specify using -ConfigFilePath. Defaults to config.xml in the directory above where this script is run from."
 }
+
 $configXML = [xml](Get-Content $AdjustedConfigFilePath)
 $DBConnectionString = $configXML.Settings.SchoolLogic.ConnectionStringRW
 
@@ -364,13 +482,19 @@ $CSVInputFile = Get-CSV -CSVFile $InputFileName
 Write-Log "Loading required data from SchoolLogic DB..."
 
 Write-Log "Loading and processing course objectives..."
+
 $SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
 Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
 $SLCourseObjectives = Convert-ObjectivesToHashtable -Objectives $SLCourseObjectives_Raw
 Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
+
 Write-Log "Loading and processing class report periods..."
 $ClassReportPeriods = Convert-ClassReportPeriodsToHashtable -AllClassReportPeriods $(Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassReportPeriods)
 Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes."
+
+Write-Log "Loading and processing course grades..."
+$CourseGrades = Convert-CourseGradesToHashTable -CourseGrades $(Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseGrades)
+Write-Log " Loaded $($CourseGrades.Keys.Count) course grades."
 
 ###########################################################################
 # Process the file                                                        #
@@ -379,35 +503,39 @@ Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes.
 Write-Log "Processing input file..."
 Write-Log " Rows to process: $($CSVInputFile.Length)"
 $OutcomeMarksToImport = New-Object -TypeName "System.Collections.ArrayList"
-$OutcomeMarksNeedingOutcomes = New-Object -TypeName "System.Collections.ArrayList"
+$OutcomeMarksNeedingOutcomes = @{}
 $OutcomeNotFound = @{}
 
 $OMProcessCounter = 0
 foreach ($InputRow in $CSVInputFile)
 {
-    # If there is no grade, ignore
-    if ($InputRow.Grade -eq "") {
-        continue;
-    }
+    $NewOutcomeMarks = Convert-ToSLB -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods
 
-    # Assemble the final mark object
-    $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods 
+    foreach($NewOutcomeMark in $NewOutcomeMarks) {
+        if ($NewOutcomeMark.iCourseObjectiveID -eq -1) {
 
-    if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
-        $OutcomeMarksNeedingOutcomes += $InputRow
-        $Fingerprint = (Get-Hash -String ("$($InputRow.CourseCode)$($InputRow.CriterionName)"))
-        if ($OutcomeNotFound.ContainsKey($Fingerprint) -eq $false) {
-            $OutcomeNotFound.Add($Fingerprint,[PSCustomObject]@{
-                iCourseID = [int]$InputRow.CourseCode
-                OutcomeCode = [string]$InputRow.CriterionName
-                OutcomeText = [string]$InputRow.CriterionDesc
-                cSubject = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
-                mNotes = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
-                iLV_ObjectiveCategoryID = 4146 # This number is used to distinguish normal outcomes from SLB outcomes
-            })
+            # When we collect the ones that didn't match, we need to only collect 1 copy of the input row
+            # but we're getting up to 4 marks from the Convert-ToSLB function. So, fingerprint the row, and
+            # only store one of them.
+            $fingerprint = Get-Hash "$($InputRow.StudentGUID)-$($InputRow.SchoolID)-$($InputRow.CourseCode)-$($InputRow.SectionGUID)-$($InputRow.ReportingTermNumber)"
+            if ($OutcomeMarksNeedingOutcomes.ContainsKey($fingerprint) -eq $false) {
+                $OutcomeMarksNeedingOutcomes.Add($fingerprint, $InputRow)
+            }
+
+            if ($OutcomeNotFound.ContainsKey($NewOutcomeMark.OutcomeCode) -eq $false) {
+                $OutcomeText = Get-SLBText -CourseID $($NewOutcomeMark.iCourseID) -OutcomeName $($NewOutcomeMark.OutcomeName) -AllCourseGrades $CourseGrades
+                $OutcomeNotFound.Add($NewOutcomeMark.OutcomeCode, [PSCustomObject]@{
+                    iCourseID = [int]$($NewOutcomeMark.iCourseID)
+                    OutcomeCode = $($NewOutcomeMark.OutcomeCode)
+                    OutcomeText = $OutcomeText
+                    cSubject = "$($NewOutcomeMark.OutcomeName): $OutcomeText"
+                    mNotes = "$($NewOutcomeMark.OutcomeName): $OutcomeText"
+                    iLV_ObjectiveCategoryID = 4150 # This number is used to distinguish normal outcomes from SLB outcomes
+                })
+            }
+        } else {
+            $OutcomeMarksToImport += $NewOutcomeMark
         }
-    } else {
-        $OutcomeMarksToImport += ($NewOutcomeMark)
     }
 
     $OMProcessCounter++
@@ -418,8 +546,8 @@ foreach ($InputRow in $CSVInputFile)
 }
 
 Write-Log "Found $($OutcomeMarksToImport.Length) marks to import"
-if ($OutcomeMarksNeedingOutcomes.Length -gt 0) {
-    Write-Log "Found $($OutcomeMarksNeedingOutcomes.Length) without matching outcomes in SchoolLogic"
+if ($OutcomeMarksNeedingOutcomes.Keys.Count -gt 0) {
+    Write-Log "Found $($OutcomeMarksNeedingOutcomes.Keys.Count) without matching outcomes in SchoolLogic"
 }
 if ($OutcomeNotFound.Count -gt 0) {
     Write-Log "Found $($OutcomeNotFound.Count) outcomes that don't exist in our database."
@@ -428,10 +556,9 @@ if ($OutcomeNotFound.Count -gt 0) {
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
-
 if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
-        
-    $OutcomeMarksNeedingOutcomes_Two = New-Object -TypeName "System.Collections.ArrayList"
+
+    $OutcomeMarksNeedingOutcomes_Two = @{}
     $OutcomeNotFound_Two = @{}
 
     # Insert new outcomes that didn't exist in SL before
@@ -457,7 +584,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         }
         $SqlConnection.close()
 
-        $OInsertCounter++        
+        $OInsertCounter++
         $PercentComplete = [int]([decimal](($OInsertCounter)/[decimal]($OutcomeNotFound.Values.Count)) * 100)
         if ($PercentComplete % 5 -eq 0) {
             Write-Progress -Activity "Inserting outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
@@ -473,42 +600,43 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
     Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
 
     # Reprocess marks that didn't have matching outcomes before
-    foreach ($InputRow in $OutcomeMarksNeedingOutcomes)
-    {    
-        # Assemble the final mark object
-        $NewOutcomeMark = Convert-ToSLOutcomeMark -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods 
-    
-        if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
-            $OutcomeMarksNeedingOutcomes_Two += $InputRow
+    foreach ($InputRow in $OutcomeMarksNeedingOutcomes.Values)
+    {
+        $NewOutcomeMarks = Convert-ToSLB -InputRow $InputRow -AllOutcomes $SLCourseObjectives -AllReportPeriods $ClassReportPeriods
 
-            $Fingerprint = (Get-Hash -String ("$($InputRow.CourseCode)$($InputRow.CriterionName)"))
-            if ($OutcomeNotFound_Two.ContainsKey($Fingerprint) -eq $false) {
-                $OutcomeNotFound_Two.Add($Fingerprint,[PSCustomObject]@{
-                    iCourseID = [int]$InputRow.CourseCode
-                    OutcomeCode = [string]$InputRow.CriterionName
-                    OutcomeText = [string]$InputRow.CriterionDesc
-                    cSubject = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
-                    mNotes = "$($InputRow.CriterionName) $($InputRow.CriterionDesc)"
-                    iLV_ObjectiveCategoryID = 4146
-                })
+        foreach($NewOutcomeMark in $NewOutcomeMarks) {
+            if ($NewOutcomeMark.iCourseObjectiveId -eq -1) {
 
+                $fingerprint = Get-Hash "$($InputRow.StudentGUID)-$($InputRow.SchoolID)-$($InputRow.CourseCode)-$($InputRow.SectionGUID)-$($InputRow.ReportingTermNumber)"
+                if ($OutcomeMarksNeedingOutcomes_Two.ContainsKey($fingerprint) -eq $false) {
+                    $OutcomeMarksNeedingOutcomes_Two.Add($fingerprint, $InputRow)
+                }
+
+                if ($OutcomeNotFound_Two.ContainsKey($NewOutcomeMark.OutcomeCode) -eq $false) {
+                    $OutcomeNotFound_Two.Add($NewOutcomeMark.OutcomeCode,[PSCustomObject]@{
+                        iCourseID = [int]$($NewOutcomeMark.iCourseID)
+                        OutcomeCode = $($NewOutcomeMark.OutcomeCode)
+                        OutcomeText = $OutcomeText
+                        cSubject = "$($NewOutcomeMark.OutcomeName): $OutcomeText"
+                        mNotes = "$($NewOutcomeMark.OutcomeName): $OutcomeText"
+                        iLV_ObjectiveCategoryID = 4150 # This number is used to distinguish normal outcomes from SLB outcomes
+                    })
+                }
+            } else {
+                $OutcomeMarksToImport += ($NewOutcomeMark)
             }
-        } else {
-            $OutcomeMarksToImport += ($NewOutcomeMark)
         }
     }
 
     Write-Log "Now $($OutcomeMarksToImport.Length) marks to import"
-    Write-Log "Now $($OutcomeMarksNeedingOutcomes_Two.Length) without matching outcomes in SchoolLogic"
+    Write-Log "Now $([int]$($OutcomeMarksNeedingOutcomes_Two.Keys.Count)) without matching outcomes in SchoolLogic"
     Write-Log "Now $($($OutcomeNotFound_Two.Count)) outcomes that don't exist in our database."
 
 } else {
-    if ($($OutcomeMarksNeedingOutcomes.Length) -gt 0) {
-        Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Length) marks due to missing outcomes."
+    if ($($OutcomeMarksNeedingOutcomes.Values.Count) -gt 0) {
+        Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Values.Count) marks due to missing outcomes."
     }
 }
-
-exit
 
 ###########################################################################
 # Import the outcome marks                                                #
@@ -518,17 +646,17 @@ Write-Log "Inserting outcome marks into SchoolLogic..."
 $OMInsertCounter = 0
 foreach($M in $OutcomeMarksToImport) {
     $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = " UPDATE StudentCourseObjective 
-                                SET 
-                                    nMark=@NMARK, 
-                                    cMark=@CMARK 
-                                WHERE 
-                                    iStudentID=@STUDENTID 
-                                    AND iCourseObjectiveID=@OBJECTIVEID 
-                                    AND iReportPeriodID=@REPID 
+    $SqlCommand.CommandText = " UPDATE StudentCourseObjective
+                                SET
+                                    nMark=@NMARK,
+                                    cMark=@CMARK
+                                WHERE
+                                    iStudentID=@STUDENTID
+                                    AND iCourseObjectiveID=@OBJECTIVEID
+                                    AND iReportPeriodID=@REPID
                                     AND iCourseID=@COURSEID
-                                IF @@ROWCOUNT = 0 
-                                INSERT INTO 
+                                IF @@ROWCOUNT = 0
+                                INSERT INTO
                                     StudentCourseObjective(iStudentID, iReportPeriodID, iCourseObjectiveID, iCourseID, iSchoolID, nMark, cMark)
                                     VALUES(@STUDENTID, @REPID, @OBJECTIVEID, @COURSEID, @SCHOOLID, @NMARK, @CMARK);"
 
