@@ -8,271 +8,24 @@ param (
 # Functions                                                               #
 ###########################################################################
 
-function Write-Log
-{
-    param(
-        [Parameter(Mandatory=$true)] $Message
-    )
-
-    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss K")> $Message"
-}
-
-function Validate-CSV {
-    param(
-        [Parameter(Mandatory=$true)][String] $CSVFile
-    )
-    # Make sure the CSV has all the required columns for what we need
-
-    $line = Get-Content $CSVFile -first 1
-
-    # Check if the first row contains headings we expect
-    if ($line.Contains('"ReportingTermNumber"') -eq $false) { throw "Input CSV missing field: ReportingTermNumber" }  
-    if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
-    if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
-    if ($line.Contains('"OverallMark"') -eq $false) { throw "Input CSV missing field: OverallMark" }
-    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }    
-    return $true
-}
-
-Function Get-Hash
-{
-    param
-    (
-        [String] $String
-    )
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($String)
-    $hashfunction = [System.Security.Cryptography.HashAlgorithm]::Create('SHA1')
-    $StringBuilder = New-Object System.Text.StringBuilder
-    $hashfunction.ComputeHash($bytes) |
-    ForEach-Object {
-        $null = $StringBuilder.Append($_.ToString("x2"))
-    }
-
-    return $StringBuilder.ToString()
-}
-
-function Get-CSV {
-    param(
-        [Parameter(Mandatory=$true)][String] $CSVFile
-    )
-
-    if ((Validate-CSV $CSVFile) -eq $true) {
-        return import-csv $CSVFile  | Select -skip 1
-    } else {
-        throw "CSV file is not valid - cannot continue"
-    }
-}
-
-function Convert-SectionID {
-    param(
-        [Parameter(Mandatory=$true)] $InputString,
-        [Parameter(Mandatory=$true)] $SchoolID
-    )
-    return $InputString.Replace("$SchoolID-","")
-}
-
-function Convert-EarnedCredits {
-    param(
-        [Parameter(Mandatory=$true)] $InputString,
-        [Parameter(Mandatory=$true)][decimal]$PotentialCredits
-    )
-
-    try {
-        $parsed = [decimal]$InputString
-        if ($parsed -gt 49) {
-            return $PotentialCredits
-        } else {
-            return 0
-        }
-
-    }
-    catch {
-        # We couldn't parse a number, so assume its a non-mark mark (like IE or NYM) or an error
-        return 0
-    }
-}
-
-function Get-ClassCredits {
-    param(
-        [Parameter(Mandatory=$true)] $iClassID,
-        [Parameter(Mandatory=$true)] $AllClassCredits
-    )
-
-    if ($AllClassCredits.ContainsKey($iClassID) -eq $true) {
-        return $AllClassCredits[$iClassID]
-    }
-
-    return 0
-}
-
-function Convert-ToSLMark {
-    param(
-        [Parameter(Mandatory=$true)] $InputRow,
-        [Parameter(Mandatory=$true)] $AllReportPeriods,
-        [Parameter(Mandatory=$true)] $AllClassCredits
-    )
-
-    # Parse cMark vs nMark
-    $cMark = ""
-    $nMark = [decimal]0.0
-
-    if ([bool]($InputRow.OverallMark -as [decimal]) -eq $true) {
-        $nMark = [decimal]$InputRow.OverallMark
-        if (
-            ($nMark -eq 1) -or
-            ($nMark -eq 1.5) -or
-            ($nMark -eq 2) -or
-            ($nMark -eq 2.5) -or
-            ($nMark -eq 3) -or
-            ($nMark -eq 3.5) -or
-            ($nMark -eq 4)
-        ) {
-            $cMark = [string]$nMark
-        }
-    } else {
-        $cMark = $InputRow.OverallMark
-    }
-
-    $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
-    $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
-
-    $NewMark = [PSCustomObject]@{
-        iReportPeriodID = [int]$iReportPeriodID
-        iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
-        iClassID = $iClassID
-        iSchoolID = $InputRow.SchoolID
-        nMark = [decimal]$nMark
-        cMark = [string]$cMark     
-        nCredit = Convert-EarnedCredits -InputString $nMark -PotentialCredits $(Get-ClassCredits -AllClassCredits $AllClassCredits -iClassID $iClassID) 
-    }
-
-    if ($NewMark.iReportPeriodID -eq -1) {
-        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
-    }
-
-    if (($NewMark.iStudentID -eq $null) -or ($NewMark.iStudentID -eq 0)) {
-        Write-Log "Mark with invalid iStudentID: $($InputRow)"
-    }
-    if (($NewMark.iReportPeriodID -eq $null) -or ($NewMark.iReportPeriodID -eq 0)) {
-        Write-Log "Mark with invalid iReportPeriodID: $($InputRow)"
-    }
-    if (($NewMark.iClassID -eq $null) -or ($NewMark.iClassID -eq 0)) {
-        Write-Log "Mark with invalid iClassID: $($InputRow)"
-    }
-
-    return $NewMark
-}
-
-function Convert-StudentID {
-    param(
-        [Parameter(Mandatory=$true)] $InputString
-    )
-
-    return [int]$InputString.Replace("STUDENT-","")
-}
-
-function Get-SQLData {
-    param(
-        [Parameter(Mandatory=$true)] $SQLQuery,
-        [Parameter(Mandatory=$true)] $ConnectionString
-    )
-
-    # Set up the SQL connection
-    $SqlConnection = new-object System.Data.SqlClient.SqlConnection
-    $SqlConnection.ConnectionString = $ConnectionString
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = $SQLQuery
-    $SqlCommand.Connection = $SqlConnection
-    $SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
-    $SqlAdapter.SelectCommand = $SqlCommand
-    $SqlDataSet = New-Object System.Data.DataSet
-
-    # Run the SQL query
-    $SqlConnection.open()
-    $SqlAdapter.Fill($SqlDataSet)
-    $SqlConnection.close()
-
-    foreach($DSTable in $SqlDataSet.Tables) {
-        return $DSTable
-    }
-    return $null
-}
-
-function Convert-ClassReportPeriodsToHashtable {
-    param(
-        [Parameter(Mandatory=$true)] $AllClassReportPeriods
-    )
-
-    $Output = @{}
-
-    foreach($RP in $AllClassReportPeriods) {
-        if ($null -ne $RP) {
-            if ($RP.iClassID -gt 0) {
-                if ($Output.ContainsKey($RP.iClassID) -eq $false) {
-                    $OutPut.Add($RP.iClassID, @())
-                }
-                $NewRP = [PSCustomObject]@{
-                    iClassID = $RP.iClassID; 
-                    iTrackID = $RP.iTrackID;
-                    iReportPeriodID = $RP.iReportPeriodID;
-                    cName = $RP.cName;
-                    dStartDate = $RP.dStartDate;
-                    dEndDate = $RP.dEndDate;
-                }                
-                $Output[$RP.iClassID] += $NewRP;
-            }
-        }
-    }
-
-    return $Output
-}
-
-function Convert-CourseCreditsToHashtable {
-    param(
-        [Parameter(Mandatory=$true)] $CourseCreditsDataTable
-    )
-
-    $Output = @{}
-
-    foreach($Obj in $CourseCreditsDataTable) {
-        if ($null -ne $Obj) {
-            if (($null -ne $Obj.iClassID) -and ($null -ne $Obj.nHighCredit)) {
-                $Output.Add([string]$Obj.iClassID, $Obj.nHighCredit)
-            }
-        }
-    }
-
-    return $Output
-}
-
-function Get-ReportPeriodID {
-    param(
-        [Parameter(Mandatory=$true)] [int]$iClassID,
-        [Parameter(Mandatory=$true)] [int]$Number,
-        [Parameter(Mandatory=$true)] $AllClassReportPeriods
-    ) 
-
-    if ($Number -gt 0) {
-        if ($AllClassReportPeriods.ContainsKey($iClassID)) {  
-            if ($AllClassReportPeriods[$iClassID].Length -ge ($Number)) {
-                return $($AllClassReportPeriods[$iClassID][$Number-1]).iReportPeriodID
-            }
-        }
-    }
-
-    return -1
-}
-
-
+import-module ./EdsbyImportModule.psm1 -Scope Local
 
 ###########################################################################
 # Script initialization                                                   #
 ###########################################################################
 
+$RequiredCSVColumns = @(
+    "ReportingTermNumber",
+    "StudentGUID",
+    "SchoolID",
+    "OverallMark",
+    "SectionGUID"
+)
+
 if ($DryRun -eq $true) {
     Write-Log "Performing dry run - will not actually commit changes to the database"
 }
+
 $SQLQuery_ClassCredits =    "SELECT
                                 Class.iClassID,
                                 Course.nHighCredit
@@ -335,7 +88,15 @@ if (Test-Path $InputFileName)
 ###########################################################################
 
 Write-Log "Loading and validating input CSV file..."
-$CSVInputFile = Get-CSV -CSVFile $InputFileName
+
+try {
+    $CSVInputFile = Get-CSV -CSVFile $InputFileName -RequiredColumns $RequiredCSVColumns
+}
+catch {
+    Write-Log("ERROR: $($_.Exception.Message)")
+    remove-module edsbyimportmodule
+    exit
+}
 
 ###########################################################################
 # Collect required info from the SL database                              #
@@ -425,44 +186,49 @@ $SqlConnection.ConnectionString = $DBConnectionString
 ###########################################################################
 
 Write-Log "Inserting class marks into SchoolLogic..."
-$OMInsertCounter = 0
-foreach($M in $MarksToImport) {
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = " UPDATE Marks 
-                                SET 
-                                    nMark=@NMARK, 
-                                    cMark=@CMARK,
-                                    nCredit=@NCREDIT
-                                WHERE 
-                                    iStudentID=@STUDENTID 
-                                    AND iClassID=@CLASSID 
-                                    AND iReportPeriodID=@REPID 
-                                    AND NOT (nMark=0 AND cMark='')
-                                IF @@ROWCOUNT = 0 
-                                INSERT INTO 
-                                    Marks(iStudentID, iReportPeriodID, iClassID, nMark, cMark, nCredit, dDateAssigned, iSchoolID, ImportTimestamp, ImportBatchID)
-                                    VALUES(@STUDENTID, @REPID, @CLASSID, @NMARK, @CMARK, @NCREDIT, @DDATEASS, @SCHOOLID, @DDATEASS, @DDATEASS);"
-    
-    $SqlCommand.Parameters.AddWithValue("@STUDENTID",$M.iStudentID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@REPID",$M.iReportPeriodID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@CLASSID",$M.iClassID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@NMARK",$M.nMark) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@CMARK",$M.cMark) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@NCREDIT",$M.nCredit) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@SCHOOLID",$M.iSchoolID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@DDATEASS",$(Get-Date)) | Out-Null
-    $SqlCommand.Connection = $SqlConnection
+if ($DryRun -ne $true) {
+    $OMInsertCounter = 0
+    foreach($M in $MarksToImport) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = " UPDATE Marks 
+                                    SET 
+                                        nMark=@NMARK, 
+                                        cMark=@CMARK,
+                                        nCredit=@NCREDIT
+                                    WHERE 
+                                        iStudentID=@STUDENTID 
+                                        AND iClassID=@CLASSID 
+                                        AND iReportPeriodID=@REPID 
+                                        AND NOT (nMark=0 AND cMark='')
+                                    IF @@ROWCOUNT = 0 
+                                    INSERT INTO 
+                                        Marks(iStudentID, iReportPeriodID, iClassID, nMark, cMark, nCredit, dDateAssigned, iSchoolID, ImportTimestamp, ImportBatchID)
+                                        VALUES(@STUDENTID, @REPID, @CLASSID, @NMARK, @CMARK, @NCREDIT, @DDATEASS, @SCHOOLID, @DDATEASS, @DDATEASS);"
+        
+        $SqlCommand.Parameters.AddWithValue("@STUDENTID",$M.iStudentID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@REPID",$M.iReportPeriodID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CLASSID",$M.iClassID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@NMARK",$M.nMark) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CMARK",$M.cMark) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@NCREDIT",$M.nCredit) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@SCHOOLID",$M.iSchoolID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@DDATEASS",$(Get-Date)) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
 
-    $SqlConnection.open()
-    if ($DryRun -ne $true) {
-        $Sqlcommand.ExecuteNonQuery() | Out-Null
-    } 
-    $SqlConnection.close()
+        $SqlConnection.open()
+        if ($DryRun -ne $true) {
+            $Sqlcommand.ExecuteNonQuery() | Out-Null
+        } 
+        $SqlConnection.close()
 
-    $OMInsertCounter++
-    $PercentComplete = [int]([decimal]($OMInsertCounter/$MarksToImport.Count) * 100)
-    if ($PercentComplete % 5 -eq 0) {
-        Write-Progress -Activity "Inserting marks" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        $OMInsertCounter++
+        $PercentComplete = [int]([decimal]($OMInsertCounter/$MarksToImport.Count) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Inserting marks" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        }
     }
+} else {
+    Write-Log "Skipping database write due to -DryRun"
 }
 Write-Log "Done!"
+remove-module EdsbyImportModule
