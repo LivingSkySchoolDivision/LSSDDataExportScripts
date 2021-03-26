@@ -711,7 +711,7 @@ function Convert-ToSLB {
     )
 
     # This needs to output _4_ marks, one for each outcome. The consumer of this function will need to handle getting an array back.
-    # "Citizenship","Collaboration","Engagement","Discipline"
+    # "Citizenship","Collaboration","Engagement","SelfDirected"
 
     $Output = New-Object -TypeName "System.Collections.ArrayList"
 
@@ -733,8 +733,8 @@ function Convert-ToSLB {
         $Output += $Mark_Engagement
     }
 
-    # Parse Self-Directed mark (which is erroneously named "Discipline" in the export file)
-    $Mark_SelfDirected = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "SELF-DIRECTED" -MarkFieldName "Discipline"
+    # Parse Self-Directed mark
+    $Mark_SelfDirected = Convert-IndividualSLBMark -InputRow $InputRow -OutcomeName "SELF-DIRECTED" -MarkFieldName "SelfDirected"
     if ($null -ne $Mark_SelfDirected) {
         $Output += $Mark_SelfDirected
     }

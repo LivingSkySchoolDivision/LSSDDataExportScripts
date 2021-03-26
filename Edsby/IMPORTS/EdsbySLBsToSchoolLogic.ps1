@@ -22,7 +22,7 @@ $RequiredCSVColumns = @(
     "Citizenship",
     "Collaboration",
     "Engagement",
-    "Discipline",
+    "SelfDirected",
     "SectionGUID"
 )
 
@@ -266,6 +266,8 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Values.Count) marks due to missing outcomes."
     }
 }
+
+$OutcomeMarksToImport
 
 ###########################################################################
 # Import the outcome marks                                                #
