@@ -16,7 +16,8 @@ import-module ./EdsbyImportModule.psm1 -Scope Local
 ###########################################################################
 
 $RequiredCSVColumns = @(
-    "ReportingTermNumber",
+    "ReportingPeriodEndDate",
+    "ReportingPeriodName",
     "StudentGUID",
     "SchoolID",
     "Citizenship",
@@ -266,8 +267,6 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         Write-Log "Skipping $($OutcomeMarksNeedingOutcomes.Values.Count) marks due to missing outcomes."
     }
 }
-
-$OutcomeMarksToImport
 
 ###########################################################################
 # Import the outcome marks                                                #

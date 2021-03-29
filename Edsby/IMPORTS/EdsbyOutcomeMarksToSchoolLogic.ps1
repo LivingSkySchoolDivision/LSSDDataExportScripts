@@ -23,7 +23,8 @@ $RequiredCSVColumns = @(
     "CriterionDesc",
     "Grade",
     "SectionGUID",
-    "ReportingTermNumber"
+    "ReportingPeriodName",
+    "ReportingPeriodEndDate"
 )
 
 if ($DryRun -eq $true) {

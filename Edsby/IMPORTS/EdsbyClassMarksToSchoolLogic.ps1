@@ -15,7 +15,8 @@ import-module ./EdsbyImportModule.psm1 -Scope Local
 ###########################################################################
 
 $RequiredCSVColumns = @(
-    "ReportingTermNumber",
+    "ReportingPeriodEndDate",
+    "ReportingPeriodName",
     "StudentGUID",
     "SchoolID",
     "OverallMark",

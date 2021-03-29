@@ -178,17 +178,37 @@ function Convert-SectionID {
 function Get-ReportPeriodID {
     param(
         [Parameter(Mandatory=$true)] [int]$iClassID,
-        [Parameter(Mandatory=$true)] [int]$Number,
+        [Parameter(Mandatory=$true)] [string]$RPName,
+        [Parameter(Mandatory=$true)] [DateTime]$RPEndDate,
         [Parameter(Mandatory=$true)] $AllClassReportPeriods
     )
 
-    if ($Number -gt 0) {
-        if ($AllClassReportPeriods.ContainsKey($iClassID)) {
-            if ($AllClassReportPeriods[$iClassID].Length -ge ($Number)) {
-                return $($AllClassReportPeriods[$iClassID][$Number-1]).iReportPeriodID
+    # We only care of the date, not the time, so remove the time from the inputted date
+
+    if ($AllClassReportPeriods.ContainsKey($iClassID)) {
+        # Check end dates
+        foreach($RP in $AllClassReportPeriods[$iClassID]) {
+            if ($RPEndDate -eq $RP.dEndDate) {
+                return $RP.iReportPeriodID
+            }
+        }
+
+        # If that didn't work, try a fuzzier search on end dates
+        foreach($RP in $AllClassReportPeriods[$iClassID]) {
+            if (($RPEndDate -lt $RP.dEndDate.AddDays(5)) -and ($RPEndDate -gt $RP.dEndDate.AddDays(-5))) {
+                write-host " > $($RP.iReportPeriodID)"
+                return $RP.iReportPeriodID
+            }
+        }
+
+        # If that didn't work, check names
+        foreach($RP in $AllClassReportPeriods[$iClassID]) {
+            if ($RPName -eq $RP.cName) {
+                return $RP.iReportPeriodID
             }
         }
     }
+    
 
     return -1
 }
@@ -592,8 +612,7 @@ function Convert-IndividualSLBMark {
 
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
-    $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
 
     $OutcomeCode = "$($OutcomeName.ToUpper())-$($InputRow.CourseCode)";
 
@@ -610,7 +629,7 @@ function Convert-IndividualSLBMark {
     }
 
     if ($NewMark.iReportPeriodID -eq -1) {
-        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
+        Write-Log "Report period not foudn for: $($iClassID) / $($InputRow.ReportingPeriodEndDate)"
     }
 
     return $NewMark
