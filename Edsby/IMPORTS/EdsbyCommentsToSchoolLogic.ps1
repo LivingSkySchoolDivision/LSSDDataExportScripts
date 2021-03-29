@@ -23,29 +23,9 @@ $RequiredCSVColumns = @(
     "SectionGUID"
 )
 
-
 if ($DryRun -eq $true) {
     Write-Log "Performing dry run - will not actually commit changes to the database"
 }
-
-$SQLQuery_ClassReportPeriods = "SELECT 
-                                    Class.iClassID,
-                                    Track.iTrackID,
-                                    ReportPeriod.iReportPeriodID,
-                                    ReportPeriod.cName,
-                                    ReportPEriod.dStartDate,
-                                    ReportPEriod.dEndDate
-                                FROM
-                                    Class
-                                    LEFT OUTER JOIN Track ON Class.iTrackID=Track.iTrackID
-                                    LEFT OUTER JOIN Term ON Track.iTrackID=Term.iTrackID
-                                    LEFT OUTER JOIN ReportPeriod ON Term.iTermID=ReportPeriod.iTermID
-                                WHERE
-                                    ReportPeriod.iReportPeriodID IS NOT NULL
-                                ORDER BY
-                                    Track.iTrackID,
-                                    ReportPEriod.dEndDate"
-
 
 Write-Log "Loading config file..."
 # Find the config file
@@ -98,7 +78,7 @@ catch {
 Write-Log "Loading required data from SchoolLogic DB..."
 
 Write-Log "Loading and processing class report periods..."
-$ClassReportPeriods = Convert-ClassReportPeriodsToHashtable -AllClassReportPeriods $(Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassReportPeriods)
+$ClassReportPeriods = Get-ClassReportPeriods -DBConnectionString $DBConnectionString
 Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes."
 
 ###########################################################################

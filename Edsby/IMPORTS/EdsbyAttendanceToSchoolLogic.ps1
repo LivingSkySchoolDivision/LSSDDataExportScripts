@@ -90,12 +90,9 @@ catch {
 
 Write-Log "Loading required data from SchoolLogic DB..."
 
-$SQLQuery_HomeroomBlocks = "SELECT iAttendanceBlocksID as ID, iBlockNumber, cName FROM AttendanceBlocks;"
-$SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Blocks"
-
 # Convert to hashtables for easier consumption
-$HomeroomBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_HomeroomBlocks
-$PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_PeriodBlocks
+$HomeroomBlocks = Get-AllHomeroomBlocks -DBConnectionString $DBConnectionString
+$PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 
 ###########################################################################
 # Process the file                                                        #

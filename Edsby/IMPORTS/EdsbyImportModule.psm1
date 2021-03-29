@@ -1,8 +1,4 @@
 ###########################################################################
-# Functions                                                               #
-###########################################################################
-
-###########################################################################
 # General Utility                                                         #
 ###########################################################################
 
@@ -168,6 +164,102 @@ function Convert-SectionID {
     } else {
         return $InputString.Replace("$SchoolID-","")
     }
+}
+
+
+
+###########################################################################
+# SQL Data                                                                #
+###########################################################################
+
+$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective"
+$SQLQuery_ClassReportPeriods = "SELECT 
+                                    Class.iClassID,
+                                    Track.iTrackID,
+                                    ReportPeriod.iReportPeriodID,
+                                    ReportPeriod.cName,
+                                    ReportPEriod.dStartDate,
+                                    ReportPEriod.dEndDate
+                                FROM
+                                    Class
+                                    LEFT OUTER JOIN Track ON Class.iTrackID=Track.iTrackID
+                                    LEFT OUTER JOIN Term ON Track.iTrackID=Term.iTrackID
+                                    LEFT OUTER JOIN ReportPeriod ON Term.iTermID=ReportPeriod.iTermID
+                                WHERE
+                                    ReportPeriod.iReportPeriodID IS NOT NULL
+                                ORDER BY
+                                    Track.iTrackID,
+                                    ReportPEriod.dEndDate"
+$SQLQuery_CourseGrades = "SELECT iCourseID, LTRIM(RTRIM(Grades.cName)) as cGrade FROM COURSE LEFT OUTER JOIN Grades ON Course.iLow_GradesID=Grades.iGradesID"
+$SQLQuery_ClassCredits =    "SELECT
+                                    Class.iClassID,
+                                    Course.nHighCredit
+                                FROM 
+                                    Class
+                                    LEFT OUTER JOIN Course ON Class.iCourseID=Course.iCourseID
+                                WHERE
+                                    Course.nHighCredit > 0"
+$SQLQuery_HomeroomBlocks = "SELECT iAttendanceBlocksID as ID, iBlockNumber, cName FROM AttendanceBlocks;"
+$SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Blocks"
+
+function Get-CourseObjectives {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    $Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
+    $Processed = Convert-ObjectivesToHashtable -Objectives $Raw
+
+    return $Processed    
+}
+
+function Get-ClassReportPeriods {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    $Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassReportPeriods
+    $Processed = Convert-ClassReportPeriodsToHashtable -AllClassReportPeriods $Raw
+
+    return $Processed    
+}
+
+function Get-CourseGrades {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    $Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseGrades
+    $Processed = Convert-CourseGradesToHashTable -CourseGrades $Raw
+
+    return $Processed    
+}
+
+function Get-AllClassCredits {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    $Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassCredits
+    $Processed = Convert-CourseCreditsToHashtable -CourseCreditsDataTable $Raw
+
+    return $Processed    
+}
+
+function Get-AllHomeroomBlocks {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    return Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_HomeroomBlocks   
+}
+
+function Get-AllPeriodBlocks {
+    param(
+        [Parameter(Mandatory=$true)] [string] $DBConnectionString
+    )
+
+    return Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_PeriodBlocks
 }
 
 
@@ -370,7 +462,7 @@ function Convert-ToSLMark {
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
     $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods  -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
 
     $NewMark = [PSCustomObject]@{
         iReportPeriodID = [int]$iReportPeriodID
@@ -432,7 +524,7 @@ function Convert-ToSLOutcomeMark {
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
     $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
     #write-host "$($iClassID) + $($Number) = $($iReportPeriodID)"
 
 
@@ -554,15 +646,14 @@ function Convert-ToComment {
     )
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
-    $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -Number $Number))
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
 
     $NewMark = [PSCustomObject]@{
         iReportPeriodID = [int]$iReportPeriodID
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
         iClassID = $iClassID
         iSchoolID = $InputRow.SchoolID
-        mComment = $InputRow.Comment
+        mComment = $InputRow.Comment.Trim()
     }
 
     if ($NewMark.iReportPeriodID -eq -1) {

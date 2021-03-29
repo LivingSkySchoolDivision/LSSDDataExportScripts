@@ -37,26 +37,6 @@ if ($ImportUnknownOutcomes -eq $true) {
     Write-Log "When encountering a mark for an outcome that doesn't exist in SchoolLogic, script will: Ignore those marks"
 }
 
-$SQLQuery_CourseObjectives = "SELECT iCourseObjectiveID, OutcomeCode, iCourseID, cSubject FROM CourseObjective"
-$SQLQuery_ClassReportPeriods = "SELECT 
-                                    Class.iClassID,
-                                    Track.iTrackID,
-                                    ReportPeriod.iReportPeriodID,
-                                    ReportPeriod.cName,
-                                    ReportPEriod.dStartDate,
-                                    ReportPEriod.dEndDate
-                                FROM
-                                    Class
-                                    LEFT OUTER JOIN Track ON Class.iTrackID=Track.iTrackID
-                                    LEFT OUTER JOIN Term ON Track.iTrackID=Term.iTrackID
-                                    LEFT OUTER JOIN ReportPeriod ON Term.iTermID=ReportPeriod.iTermID
-                                WHERE
-                                    ReportPeriod.iReportPeriodID IS NOT NULL
-                                ORDER BY
-                                    Track.iTrackID,
-                                    ReportPEriod.dEndDate"
-
-
 Write-Log "Loading config file..."
 # Find the config file
 $AdjustedConfigFilePath = $ConfigFilePath
@@ -108,12 +88,11 @@ catch {
 Write-Log "Loading required data from SchoolLogic DB..."
 
 Write-Log "Loading and processing course objectives..."
-$SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
-Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
-$SLCourseObjectives = Convert-ObjectivesToHashtable -Objectives $SLCourseObjectives_Raw
-Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
+$SLCourseObjectives = Get-CourseObjectives -DBConnectionString $DBConnectionString
+Write-Log " Loaded $($SLCourseObjectives.Keys.Count) course objectives."
+
 Write-Log "Loading and processing class report periods..."
-$ClassReportPeriods = Convert-ClassReportPeriodsToHashtable -AllClassReportPeriods $(Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ClassReportPeriods)
+$ClassReportPeriods = Get-ClassReportPeriods -DBConnectionString $DBConnectionString
 Write-Log " Loaded report periods for $($ClassReportPeriods.Keys.Count) classes."
 
 ###########################################################################
@@ -211,10 +190,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
 
     # Re-import outcomes from SchoolLogic
     Write-Log "Reloading outcomes from SchoolLogic..."
-    $SLCourseObjectives_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_CourseObjectives
-    Write-Log " Loaded $($SLCourseObjectives_Raw.Length) course objectives."
-    Write-Log "Processing course objectives from SchoolLogic DB..."
-    $SLCourseObjectives = Convert-ObjectivesToHashtable -Objectives $SLCourseObjectives_Raw
+    $SLCourseObjectives = Get-CourseObjectives -DBConnectionString $DBConnectionString
     Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
 
     # Reprocess marks that didn't have matching outcomes before
