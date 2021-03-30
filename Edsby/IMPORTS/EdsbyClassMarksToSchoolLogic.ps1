@@ -91,8 +91,9 @@ Write-Log " Loaded class credit information for $($ClassCredits.Keys.Count) clas
 
 Write-Log "Processing input file..."
 Write-Log " Rows to process: $($CSVInputFile.Length)"
-$MarksToImport_Raw = New-Object -TypeName "System.Collections.ArrayList"
+$MarksToImport = New-Object -TypeName "System.Collections.ArrayList"
 
+$FoundMarkClassesByStudentID = @{}
 $OMProcessCounter = 0
 foreach ($InputRow in $CSVInputFile)
 {
@@ -101,12 +102,20 @@ foreach ($InputRow in $CSVInputFile)
         continue;
     }
 
-    # Assemble the final mark object
-    $NewMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
+    # Check if we already know about this mark
+    $fingerprint = "$($InputRow.StudentGUID)-$($InputRow.SectionGUID)-$($InputRow.ReportingPeriodName)-$($InputRow.ReportingPeriodStartDate)-$($InputRow.ReportingPeriodEndDate)-$($InputRow.Grade)"
 
-    if (($NewMark.nMark -gt 1) -or ($NewMark.cMark -ne "")) {
-        $MarksToImport_Raw += $NewMark
-    }
+    if ($FoundMarkClassesByStudentID.ContainsKey($fingerprint) -eq $false) {
+
+        # Assemble the final mark object
+        $NewMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
+
+        if (($NewMark.nMark -gt 1) -or ($NewMark.cMark -ne "")) {
+            $MarksToImport += $NewMark
+        }
+        
+        $FoundMarkClassesByStudentID.Add($fingerprint, $NewMark)
+    }    
     
     $OMProcessCounter++
     $PercentComplete = [int]([decimal]($OMProcessCounter/$CSVInputFile.Length) * 100)
@@ -115,42 +124,7 @@ foreach ($InputRow in $CSVInputFile)
     }
 }
 
-Write-Log "Found $($MarksToImport_Raw.Length) marks to import"
-
-Write-Log "De-duping marks..."
-$MarksToImport = New-Object -TypeName "System.Collections.ArrayList"
-$FoundMarkClassesByStudentID = @{}
-
-$DeDupeCounter = 0
-foreach($Mark in $MarksToImport_Raw) {
-
-    try {
-        if ($FoundMarkClassesByStudentID.ContainsKey($Mark.iStudentID) -eq $false) {
-            $FoundMarkClassesByStudentID.Add($Mark.iStudentID, @{})
-        }
-
-        if ($FoundMarkClassesByStudentID[$Mark.iStudentID].Contains($Mark.iReportPeriodID) -eq $false) {
-            $FoundMarkClassesByStudentID[$Mark.iStudentID].Add($Mark.iReportPeriodID, (New-Object -TypeName "System.Collections.ArrayList"))
-        }
-
-        if ($FoundMarkClassesByStudentID[$Mark.iStudentID][$Mark.iReportPeriodID].Contains($Mark.iClassID) -eq $false) {
-            
-            $MarksToImport += $Mark
-            $FoundMarkClassesByStudentID[$Mark.iStudentID][$Mark.iReportPeriodID] += $Mark.iClassID
-        }
-
-        $DeDupeCounter++
-        $PercentComplete = [int]([decimal]($DeDupeCounter/$CSVInputFile.Length) * 100)
-        if ($PercentComplete % 5 -eq 0) {
-            Write-Progress -Activity "De-Duping" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
-        }
-    }
-    catch {
-        write-log "EXCEPTION: $($Mark)"
-    }
-}
-
-Write-Log "De-duped to $($MarksToImport.Length) marks to import."
+Write-Log "Found $($MarksToImport.Length) marks to import"
 
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
