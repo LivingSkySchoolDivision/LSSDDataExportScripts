@@ -281,28 +281,26 @@ function Get-ReportPeriodID {
         # Check end dates
         foreach($RP in $AllClassReportPeriods[$iClassID]) {
             if ($RPEndDate -eq $RP.dEndDate) {
-                return $RP.iReportPeriodID
+                return [int]$($RP.iReportPeriodID)
             }
         }
 
         # If that didn't work, try a fuzzier search on end dates
         foreach($RP in $AllClassReportPeriods[$iClassID]) {
             if (($RPEndDate -lt $RP.dEndDate.AddDays(5)) -and ($RPEndDate -gt $RP.dEndDate.AddDays(-5))) {
-                write-host " > $($RP.iReportPeriodID)"
-                return $RP.iReportPeriodID
+                return [int]$($RP.iReportPeriodID)
             }
         }
 
         # If that didn't work, check names
         foreach($RP in $AllClassReportPeriods[$iClassID]) {
             if ($RPName -eq $RP.cName) {
-                return $RP.iReportPeriodID
+                return [int]$($RP.iReportPeriodID)
             }
         }
     }
     
-
-    return -1
+    return [int]-1
 }
 
 function Convert-EarnedCredits {
@@ -460,10 +458,14 @@ function Convert-ToSLMark {
         $cMark = $InputRow.OverallMark
     }
 
-    $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
-    $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods  -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
-
+    $iClassID = Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID
+    if ($iClassID -eq -1) {
+        Write-Host "ERROR PARSING CLASSID FOR $($InputRow.SectionGUID)"
+        return $null
+    }
+    
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
+    
     $NewMark = [PSCustomObject]@{
         iReportPeriodID = [int]$iReportPeriodID
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
