@@ -223,7 +223,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
         }
         
         $ReprocessCounter++        
-        $PercentComplete = [int]([decimal](($ReprocessCounter)/[decimal]($OutcomeMarksNeedingOutcomes.Values.Count)) * 100)
+        $PercentComplete = [int]([decimal](($ReprocessCounter)/[decimal]($OutcomeMarksNeedingOutcomes.Length)) * 100)
         if ($PercentComplete % 5 -eq 0) {
             Write-Progress -Activity "Reprocessing outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
         }
