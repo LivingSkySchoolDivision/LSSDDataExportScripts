@@ -287,7 +287,7 @@ function Get-ReportPeriodID {
 
         # If that didn't work, try a fuzzier search on end dates
         foreach($RP in $AllClassReportPeriods[$iClassID]) {
-            if (([datetime]$RPEndDate -lt [datettime]($RP.dEndDate.AddDays(5))) -and ([datetime]($RPEndDate -gt $RP.dEndDate.AddDays(-5)))) {
+            if (([datetime]$RPEndDate -lt [datetime]($RP.dEndDate.AddDays(5))) -and ([datetime]($RPEndDate -gt $RP.dEndDate.AddDays(-5)))) {
                 return [int]$($RP.iReportPeriodID)
             }
         }
