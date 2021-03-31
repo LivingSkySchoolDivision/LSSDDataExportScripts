@@ -12,250 +12,28 @@ param (
 # Functions                                                               #
 ###########################################################################
 
-function Write-Log
-{
-    param(
-        [Parameter(Mandatory=$true)] $Message
-    )
-
-    Write-Output "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss K")> $Message"
-}
-
-function Validate-CSV {
-    param(
-        [Parameter(Mandatory=$true)][String] $CSVFile
-    )
-    # Make sure the CSV has all the required columns for what we need
-
-    $line = Get-Content $CSVFile -first 1
-
-    # Check if the first row contains headings we expect
-    if ($line.Contains('"SchoolID"') -eq $false) { throw "Input CSV missing field: SchoolID" }
-    if ($line.Contains('"IncidentComment"') -eq $false) { throw "Input CSV missing field: IncidentComment" }
-    if ($line.Contains('"MeetingDate"') -eq $false) { throw "Input CSV missing field: MeetingDate" }
-    if ($line.Contains('"IncidentTags"') -eq $false) { throw "Input CSV missing field: IncidentTags" }
-    if ($line.Contains('"IncidentID"') -eq $false) { throw "Input CSV missing field: IncidentID" }
-    if ($line.Contains('"IncidentUpdateDateTime"') -eq $false) { throw "Input CSV missing field: IncidentUpdateDateTime" }
-    if ($line.Contains('"MeetingID"') -eq $false) { throw "Input CSV missing field: MeetingID" }
-    if ($line.Contains('"StudentGUID"') -eq $false) { throw "Input CSV missing field: StudentGUID" }
-    if ($line.Contains('"MeetingTeacherGUIDs"') -eq $false) { throw "Input CSV missing field: MeetingTeacherGUIDs" }
-    if ($line.Contains('"SectionGUID"') -eq $false) { throw "Input CSV missing field: SectionGUID" }
-    if ($line.Contains('"SectionName"') -eq $false) { throw "Input CSV missing field: SectionName" }
-    if ($line.Contains('"MeetingPeriodIDs"') -eq $false) { throw "Input CSV missing field: MeetingPeriodIDs" }
-    if ($line.Contains('"IncidentCode"') -eq $false) { throw "Input CSV missing field: IncidentCode" }
-    if ($line.Contains('"IncidentReasonCode"') -eq $false) { throw "Input CSV missing field: IncidentReasonCode" }
-    
-    return $true
-}
-
-function Get-CSV {
-    param(
-        [Parameter(Mandatory=$true)][String] $CSVFile
-    )
-
-    if ((Validate-CSV $CSVFile) -eq $true) {
-        return import-csv $CSVFile  | Select -skip 1
-    } else {
-        throw "CSV file is not valid - cannot continue"
-    }
-}
-
-function Convert-AttendanceReason {
-    param(
-        [Parameter(Mandatory=$true)] $InputString
-    )
-
-    # We'll return -1 as something we should ignore, and then ignore those rows later in the program
-
-    # Could pull from the database, but im in a crunch, so this is getting manually correlated for now.
-    # Attendance Reasons in SchoolLogic:
-    # 98    Known Reason
-    # 100   Medical
-    # 101   Extra-Curr
-    # 103   Curricular
-    # 104   Engaged
-
-    # Reason codes from Edsby
-    #   S-Curr
-    #   S-XCurr
-    #   S-Med
-    #   S-Exp
-    #   S-Eng
-    #   A-Med
-    #   A-Exp
-    #   A-UnExp
-    #   LA-Curr
-    #   LA-XCurr
-    #   LA-Med
-    #   LA-Exp
-    #   LA-UnExp
-    #   LE-Curr
-    #   LE-XCurr
-    #   LE-Med
-    #   LE-Exp
-    #   LE-UnExp
-
-    if ($InputString -like '*-Exp') { return 98 }
-    if ($InputString -like '*-Med') { return 100 }
-    if ($InputString -like '*-Curr') { return 103 }
-    if ($InputString -like '*-XCurr') { return 101 }
-    if ($InputString -like '*-Eng') { return 104 }
-
-    return 0
-}
-
-function Convert-AttendanceStatus {
-    param(
-        [Parameter(Mandatory=$true)] $AttendanceCode,
-        [Parameter(Mandatory=$true)] $AttendanceReasonCode
-    )
-
-    # We'll return -1 as something we should ignore, and then ignore those rows later in the program
-
-    # Could pull from the database, but im in a crunch, so this is getting manually correlated for now.
-    # Attendance Statuses in SchoolLogic:
-    # 1     Present
-    # 2     Absent
-    # 3     Late
-    # 4     School (Absent from class, but still at a school fuction)
-    # 5     No Change
-    # 6     Leave Early
-    # 7     Division (School closures)
-
-    if ($AttendanceCode -like 'absent*') { return 2 }  # Unexplained absence
-    if ($AttendanceCode -like 'sanctioned*') { return 4 }
-    if ($AttendanceCode -like 'late*') { return 3 }
-
-    # Excused might mean absent or leave early
-    if ($AttendanceCode -like 'excused*') {
-        if ($null -ne $AttendanceReasonCode) {
-            if ($AttendanceReasonCode -like 'le-*') {
-                return 6
-            }
-            if ($AttendanceReasonCode -like 'la-*') {
-                return 3
-            }
-            if ($AttendanceReasonCode -like 's-*') {
-                return 4
-            }
-            return 2
-        }
-    }
-
-
-    return -1
-}
-
-Function Get-Hash
-{
-    param
-    (
-        [String] $String
-    )
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($String)
-    $hashfunction = [System.Security.Cryptography.HashAlgorithm]::Create('SHA1')
-    $StringBuilder = New-Object System.Text.StringBuilder
-    $hashfunction.ComputeHash($bytes) |
-    ForEach-Object {
-        $null = $StringBuilder.Append($_.ToString("x2"))
-    }
-
-    return $StringBuilder.ToString()
-}
-
-function Convert-SectionID {
-    param(
-        [Parameter(Mandatory=$true)] $InputString,
-        [Parameter(Mandatory=$true)] $SchoolID,
-        [Parameter(Mandatory=$true)] $ClassName
-    )
-
-    if ($ClassName -like 'homeroom*') {
-        return 0
-    } else {
-        return $InputString.Replace("$SchoolID-","")
-    }
-}
-
-function Convert-StudentID {
-    param(
-        [Parameter(Mandatory=$true)] $InputString
-    )
-
-    return [int]$InputString.Replace("STUDENT-","")
-}
-
-function Convert-StaffID {
-    param(
-        [Parameter(Mandatory=$true)] $InputString
-    )
-
-    # We might get a list of staff, in which case we should parse it and just return the first one
-    $StaffList = $InputString.Split(',')
-
-    return [int]$StaffList[0].Replace("STAFF-","")
-}
-
-function Get-SQLData {
-    param(
-        [Parameter(Mandatory=$true)] $SQLQuery,
-        [Parameter(Mandatory=$true)] $ConnectionString
-    )
-
-    # Set up the SQL connection
-    $SqlConnection = new-object System.Data.SqlClient.SqlConnection
-    $SqlConnection.ConnectionString = $ConnectionString
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = $SQLQuery
-    $SqlCommand.Connection = $SqlConnection
-    $SqlAdapter = New-Object System.Data.SqlClient.SqlDataAdapter
-    $SqlAdapter.SelectCommand = $SqlCommand
-    $SqlDataSet = New-Object System.Data.DataSet
-
-    # Run the SQL query
-    $SqlConnection.open()
-    $SqlAdapter.Fill($SqlDataSet)
-    $SqlConnection.close()
-
-    foreach($DSTable in $SqlDataSet.Tables) {
-        return $DSTable
-    }
-    return $null
-}
-
-
-function Convert-BlockID {
-    param(
-        [Parameter(Mandatory=$true)][int] $EdsbyPeriodsID,
-        [Parameter(Mandatory=$true)][string] $ClassName,
-        [Parameter(Mandatory=$true)] $PeriodBlockDataTable,
-        [Parameter(Mandatory=$true)] $DailyBlockDataTable
-    )
-
-    # Determine if this is a homeroom or a period class
-    # The only way we can do that with the data we have, is that homeroom class names
-    # always start with the word "Homeroom".
-    # Homerooms use the DailyBlockDataTable, scheduled classes use the PeriodBlockDataTable
-
-    $Block = $null
-
-    if ($ClassName -like 'homeroom*') {
-        $Block = $DailyBlockDataTable.Where({ $_.ID -eq $EdsbyPeriodsID })
-    } else {
-        $Block = $PeriodBlockDataTable.Where({ $_.ID -eq $EdsbyPeriodsID })
-    }
-
-    if ($null -ne $Block) {
-        return [int]$($Block.iBlockNumber)
-    }
-
-    return -1
-}
-
+import-module ./EdsbyImportModule.psm1 -Scope Local
 
 ###########################################################################
 # Script initialization                                                   #
 ###########################################################################
+
+$RequiredCSVColumns = @(
+    "SchoolID",
+    "IncidentComment",
+    "MeetingDate",
+    "IncidentTags",
+    "IncidentID",
+    "IncidentUpdateDateTime",
+    "MeetingID",
+    "StudentGUID",
+    "MeetingTeacherGUIDs",
+    "SectionGUID",
+    "SectionName",
+    "MeetingPeriodIDs",
+    "IncidentCode",
+    "IncidentReasonCode"
+)
 
 if ($DryRun -eq $true) {
     Write-Log "Performing dry run - will not actually commit changes to the database"
@@ -296,7 +74,15 @@ if (Test-Path $InputFileName)
 ###########################################################################
 
 Write-Log "Loading and validating input CSV file..."
-$CSVInputFile = Get-CSV -CSVFile $InputFileName
+
+try {
+    $CSVInputFile = Get-CSV -CSVFile $InputFileName -RequiredColumns $RequiredCSVColumns
+}
+catch {
+    Write-Log("ERROR: $($_.Exception.Message)")
+    remove-module edsbyimportmodule
+    exit
+}
 
 ###########################################################################
 # Collect required info from the SL database                              #
@@ -304,12 +90,9 @@ $CSVInputFile = Get-CSV -CSVFile $InputFileName
 
 Write-Log "Loading required data from SchoolLogic DB..."
 
-$SQLQuery_HomeroomBlocks = "SELECT iAttendanceBlocksID as ID, iBlockNumber, cName FROM AttendanceBlocks;"
-$SQLQuery_PeriodBlocks = "SELECT iBlocksID as ID, iBlockNumber, cName FROM Blocks"
-
 # Convert to hashtables for easier consumption
-$HomeroomBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_HomeroomBlocks
-$PeriodBlocks = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_PeriodBlocks
+$HomeroomBlocks = Get-AllHomeroomBlocks -DBConnectionString $DBConnectionString
+$PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 
 ###########################################################################
 # Process the file                                                        #
@@ -492,77 +275,88 @@ $SqlConnection.ConnectionString = $DBConnectionString
 
 if ($PerformDeletes -eq $true) {
     # Implement a limit on the number of records that this script will willingly delete
+    if ($DryRun -ne $true) {
+        Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
+        foreach ($ThumbToDelete in $ThumbprintsToDelete) {
+            if ($ThumbToDelete.Length -gt 1) {
+                Write-Log " > Deleting $ThumbToDelete"
+                $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+                $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
+                $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete) | Out-Null
+                $SqlCommand.Connection = $SqlConnection
 
-    Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
-    foreach ($ThumbToDelete in $ThumbprintsToDelete) {
-        if ($ThumbToDelete.Length -gt 1) {
-            Write-Log " > Deleting $ThumbToDelete"
-            $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-            $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
-            $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete) | Out-Null
-            $SqlCommand.Connection = $SqlConnection
-
-            $SqlConnection.open()
-            if ($DryRun -ne $true) {
-                $Sqlcommand.ExecuteNonQuery()
-            } else {
-                Write-Log " (Skipping SQL query due to -DryRun)"
+                $SqlConnection.open()
+                if ($DryRun -ne $true) {
+                    $Sqlcommand.ExecuteNonQuery()
+                }
+                $SqlConnection.close()
             }
-            $SqlConnection.close()
         }
+    } else {
+        Write-Log "Skipping database write due to -DryRun"
     }
 }
 
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
-foreach ($NewRecord in $RecordsToInsert) {
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
-                                    VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
-    $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@STATUSID",$NewRecord.iAttendanceStatusID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@REASONID",$NewRecord.iAttendanceReasonsID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@DDATE",$NewRecord.dDate) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@CLASSID",$NewRecord.iClassID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@MINUTES",0) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$NewRecord.mComment) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@ISTAFFID",$NewRecord.iStaffID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@ISCHOOLID",$NewRecord.iSchoolID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@EDSBYINCIDENTID",$NewRecord.cIncidentID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$NewRecord.mTags) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$NewRecord.dEdsbyLastUpdate) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@MEETINGID",$NewRecord.iMeetingID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@THUMB",$NewRecord.Thumbprint) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@VALHASH",$NewRecord.ValueHash) | Out-Null
-    $SqlCommand.Connection = $SqlConnection
+if ($DryRun -ne $true) {
+    foreach ($NewRecord in $RecordsToInsert) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
+                                        VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
+        $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@STATUSID",$NewRecord.iAttendanceStatusID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@REASONID",$NewRecord.iAttendanceReasonsID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@DDATE",$NewRecord.dDate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@CLASSID",$NewRecord.iClassID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MINUTES",0) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$NewRecord.mComment) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ISTAFFID",$NewRecord.iStaffID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@ISCHOOLID",$NewRecord.iSchoolID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@EDSBYINCIDENTID",$NewRecord.cIncidentID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$NewRecord.mTags) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$NewRecord.dEdsbyLastUpdate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MEETINGID",$NewRecord.iMeetingID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@THUMB",$NewRecord.Thumbprint) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@VALHASH",$NewRecord.ValueHash) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
 
-    $SqlConnection.open()
-    if ($DryRun -ne $true) {
-        $Sqlcommand.ExecuteNonQuery()
-    } else {
-        Write-Log " (Skipping SQL query due to -DryRun)"
+        $SqlConnection.open()
+        if ($DryRun -ne $true) {
+            $Sqlcommand.ExecuteNonQuery()
+        } else {
+            Write-Log " (Skipping SQL query due to -DryRun)"
+        }
+        $SqlConnection.close()
     }
-    $SqlConnection.close()
+} else {
+    Write-Log "Skipping database write due to -DryRun"
 }
-
 Write-Log "Updating $($RecordsToUpdate.Count) records..."
-foreach ($UpdatedRecord in $RecordsToUpdate) {
-    $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-    $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
-    $SqlCommand.Parameters.AddWithValue("@REASONID",$UpdatedRecord.iAttendanceReasonsID) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$UpdatedRecord.mComment) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$UpdatedRecord.mTags) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$UpdatedRecord.dEdsbyLastUpdate) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@VALHASH",$UpdatedRecord.ValueHash) | Out-Null
-    $SqlCommand.Parameters.AddWithValue("@THUMB",$UpdatedRecord.Thumbprint) | Out-Null
-    $SqlCommand.Connection = $SqlConnection
+if ($DryRun -ne $true) {
+    foreach ($UpdatedRecord in $RecordsToUpdate) {
+        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
+        $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
+        $SqlCommand.Parameters.AddWithValue("@REASONID",$UpdatedRecord.iAttendanceReasonsID) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$UpdatedRecord.mComment) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$UpdatedRecord.mTags) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$UpdatedRecord.dEdsbyLastUpdate) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@VALHASH",$UpdatedRecord.ValueHash) | Out-Null
+        $SqlCommand.Parameters.AddWithValue("@THUMB",$UpdatedRecord.Thumbprint) | Out-Null
+        $SqlCommand.Connection = $SqlConnection
 
-    $SqlConnection.open()
-    if ($DryRun -ne $true) {
-        $Sqlcommand.ExecuteNonQuery()
-    } else {
-        Write-Log " (Skipping SQL query due to -DryRun)"
+        $SqlConnection.open()
+        if ($DryRun -ne $true) {
+            $Sqlcommand.ExecuteNonQuery()
+        } else {
+            Write-Log " (Skipping SQL query due to -DryRun)"
+        }
+        $SqlConnection.close()
     }
-    $SqlConnection.close()
+} else {
+    Write-Log "Skipping database write due to -DryRun"
 }
+
+Write-Log "Done!"
+remove-module EdsbyImportModule
 
