@@ -102,20 +102,23 @@ foreach ($InputRow in $CSVInputFile)
         continue;
     }
 
+    # Parse the marks
+    $NewMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
+
     # Check if we already know about this mark
-    $fingerprint = "$($InputRow.StudentGUID)-$($InputRow.SectionGUID)-$($InputRow.ReportingPeriodName)-$($InputRow.ReportingPeriodStartDate)-$($InputRow.ReportingPeriodEndDate)-$($InputRow.Grade)"
+    if ($FoundMarkClassesByStudentID.ContainsKey($NewMark.iStudentID) -eq $false) {
+        $FoundMarkClassesByStudentID.Add($NewMark.iStudentID, @{})
+    }
 
-    if ($FoundMarkClassesByStudentID.ContainsKey($fingerprint) -eq $false) {
+    if ($FoundMarkClassesByStudentID[$NewMark.iStudentID].Contains($NewMark.iReportPeriodID) -eq $false) {
+        $FoundMarkClassesByStudentID[$NewMark.iStudentID].Add($NewMark.iReportPeriodID, (New-Object -TypeName "System.Collections.ArrayList"))
+    }
 
-        # Assemble the final mark object
-        $NewMark = Convert-ToSLMark -InputRow $InputRow -AllReportPeriods $ClassReportPeriods -AllClassCredits $ClassCredits
-
-        if (($NewMark.nMark -gt 1) -or ($NewMark.cMark -ne "")) {
-            $MarksToImport += $NewMark
-        }
-        
-        $FoundMarkClassesByStudentID.Add($fingerprint, $NewMark)
-    }    
+    if ($FoundMarkClassesByStudentID[$NewMark.iStudentID][$NewMark.iReportPeriodID].Contains($NewMark.iClassID) -eq $false) {
+        $MarksToImport += $NewMark
+        $FoundMarkClassesByStudentID[$NewMark.iStudentID][$NewMark.iReportPeriodID] += $NewMark.iClassID
+    }
+     
     
     $OMProcessCounter++
     $PercentComplete = [int]([decimal]($OMProcessCounter/$CSVInputFile.Length) * 100)
