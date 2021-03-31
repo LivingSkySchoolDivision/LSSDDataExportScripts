@@ -85,6 +85,19 @@ function Validate-CSV {
     return $true
 }
 
+function Trim-ToNCharacters {
+    param(
+        [Parameter(Mandatory=$true)] $InputString,
+        [Parameter(Mandatory=$true)] [int]$NumChars
+    )
+
+    if ($InputString.Length -gt $NumChars) {
+        return $InputString.SubString(0,$NumChars)
+    } else {
+        return $InputString
+    }
+}
+
 ###########################################################################
 # Parsers and Converters                                                  #
 ###########################################################################

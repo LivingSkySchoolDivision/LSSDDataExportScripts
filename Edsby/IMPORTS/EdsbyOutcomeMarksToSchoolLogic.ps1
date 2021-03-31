@@ -168,7 +168,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
             $SqlCommand.Parameters.AddWithValue("@OUTCOMECODE",$NewOutcome.OutcomeCode) | Out-Null
             $SqlCommand.Parameters.AddWithValue("@OUTCOMETEXT",$NewOutcome.OutcomeText) | Out-Null
             $SqlCommand.Parameters.AddWithValue("@ICOURSEID",$NewOutcome.iCourseID) | Out-Null
-            $SqlCommand.Parameters.AddWithValue("@CSUBJECT",$NewOutcome.cSubject) | Out-Null
+            $SqlCommand.Parameters.AddWithValue("@CSUBJECT",(Trim-ToNCharacters -InputString $NewOutcome.cSubject -NumChars 254)) | Out-Null
             $SqlCommand.Parameters.AddWithValue("@MNOTES",$NewOutcome.mNotes) | Out-Null
             $SqlCommand.Parameters.AddWithValue("@CATEGORYID",$NewOutcome.iLV_ObjectiveCategoryID) | Out-Null
             $SqlCommand.Connection = $SqlConnection
