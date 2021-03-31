@@ -130,7 +130,7 @@ foreach ($InputRow in $CSVInputFile)
             })
         }
     } else {
-        $OutcomeMarksToImport += ($NewOutcomeMark)
+        $OutcomeMarksToImport += $NewOutcomeMark
     }
 
     $OMProcessCounter++
@@ -158,7 +158,8 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
     $OutcomeNotFound_Two = @{}
     if ($DryRun -ne $true) {
         # Insert new outcomes that didn't exist in SL before
-        $OInsertCounter = 0
+        $OInsertCounter = 0        
+        Write-Log "Inserting $($OutcomeNotFound.Count) outcomes..."
         foreach ($NewOutcome in $OutcomeNotFound.Values) {
             $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
             $SqlCommand.CommandText = "INSERT INTO CourseObjective(lImportedFromEdsby,OutcomeCode,OutcomeText,iCourseID,cSubject,mNotes,iLV_ObjectiveCategoryID)
@@ -184,6 +185,7 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
                 Write-Progress -Activity "Inserting outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
             }
         }
+        Write-Log " Inserted $($OInsertCounter) outcomes."
     } else {
         Write-Log "Skipping database write due to -DryRun"
     }
@@ -194,6 +196,8 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
     Write-Log " Processed $($SLCourseObjectives.Length) course objectives."
 
     # Reprocess marks that didn't have matching outcomes before
+    Write-Log "Reprocessing $($OutcomeMarksNeedingOutcomes.Length) marks..."
+    $ReprocessCounter = 0
     foreach ($InputRow in $OutcomeMarksNeedingOutcomes)
     {    
         # Assemble the final mark object
@@ -216,6 +220,12 @@ if (($ImportUnknownOutcomes -eq $true) -and ($OutcomeNotFound.Count -gt 0)) {
             }
         } else {
             $OutcomeMarksToImport += ($NewOutcomeMark)
+        }
+        
+        $ReprocessCounter++        
+        $PercentComplete = [int]([decimal](($ReprocessCounter)/[decimal]($OutcomeMarksNeedingOutcomes.Values.Count)) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Reprocessing outcomes" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
         }
     }
 
