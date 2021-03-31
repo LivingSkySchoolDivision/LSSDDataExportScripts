@@ -287,7 +287,7 @@ function Get-ReportPeriodID {
 
         # If that didn't work, try a fuzzier search on end dates
         foreach($RP in $AllClassReportPeriods[$iClassID]) {
-            if (($RPEndDate -lt $RP.dEndDate.AddDays(5)) -and ($RPEndDate -gt $RP.dEndDate.AddDays(-5))) {
+            if (([datetime]$RPEndDate -lt [datettime]($RP.dEndDate.AddDays(5))) -and ([datetime]($RPEndDate -gt $RP.dEndDate.AddDays(-5)))) {
                 return [int]$($RP.iReportPeriodID)
             }
         }
@@ -476,20 +476,6 @@ function Convert-ToSLMark {
         nCredit = Convert-EarnedCredits -InputString $nMark -PotentialCredits $(Get-ClassCredits -AllClassCredits $AllClassCredits -iClassID $iClassID) 
     }
 
-    if ($NewMark.iReportPeriodID -eq -1) {
-        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
-    }
-
-    if (($NewMark.iStudentID -eq $null) -or ($NewMark.iStudentID -eq 0)) {
-        Write-Log "Mark with invalid iStudentID: $($InputRow)"
-    }
-    if (($NewMark.iReportPeriodID -eq $null) -or ($NewMark.iReportPeriodID -eq 0)) {
-        Write-Log "Mark with invalid iReportPeriodID: $($InputRow)"
-    }
-    if (($NewMark.iClassID -eq $null) -or ($NewMark.iClassID -eq 0)) {
-        Write-Log "Mark with invalid iClassID: $($InputRow)"
-    }
-
     return $NewMark
 }
 
@@ -525,10 +511,8 @@ function Convert-ToSLOutcomeMark {
     }
 
     $iClassID = (Convert-SectionID -SchoolID $InputRow.SchoolID -InputString $InputRow.SectionGUID)
-    $Number = [int]($InputRow.ReportingTermNumber)
-    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
-    #write-host "$($iClassID) + $($Number) = $($iReportPeriodID)"
 
+    $iReportPeriodID = [int]((Get-ReportPeriodID -iClassID $iClassID -AllClassReportPeriods $AllReportPeriods -RPEndDate $InputRow.ReportingPeriodEndDate -RPName $InputRow.ReportingPeriodName))
 
     $NewOutcomeMark = [PSCustomObject]@{
         iStudentID = [int](Convert-StudentID $InputRow.StudentGUID)
@@ -538,10 +522,6 @@ function Convert-ToSLOutcomeMark {
         iSchoolID = [int]$InputRow.SchoolID
         nMark = [decimal]$nMark
         cMark = [string]$cMark
-    }
-
-    if ($NewOutcomeMark.iReportPeriodID -eq -1) {
-        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
     }
 
     return $NewOutcomeMark
@@ -658,10 +638,6 @@ function Convert-ToComment {
         mComment = $InputRow.Comment.Trim()
     }
 
-    if ($NewMark.iReportPeriodID -eq -1) {
-        Write-Log "Invalid classid and report period number combination: $($iClassID) / $($InputRow.ReportingTermNumber)"
-    }
-
     return $NewMark
 }
 
@@ -719,10 +695,6 @@ function Convert-IndividualSLBMark {
         nMark = [decimal]$nMark
         OutcomeName = $OutcomeName
         OutcomeCode = $OutcomeCode
-    }
-
-    if ($NewMark.iReportPeriodID -eq -1) {
-        Write-Log "Report period not foudn for: $($iClassID) / $($InputRow.ReportingPeriodEndDate)"
     }
 
     return $NewMark

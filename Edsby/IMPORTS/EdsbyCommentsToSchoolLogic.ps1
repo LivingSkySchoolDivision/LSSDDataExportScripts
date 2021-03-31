@@ -92,15 +92,10 @@ $MarksToImport = @()
 $OMProcessCounter = 0
 foreach ($InputRow in $CSVInputFile)
 {
-    # If there is no grade, ignore
-    if ($InputRow.OverallMark -eq "") {
-        continue;
-    }
-
     # Assemble the final mark object
     $NewComment = Convert-ToComment -InputRow $InputRow -AllReportPeriods $ClassReportPeriods
-
-    if ($NewComment.mComment.Length -gt 0) {
+    
+    if ($NewComment.mComment.Trim().Length -gt 1) {
         $MarksToImport += $NewComment
     }
     
