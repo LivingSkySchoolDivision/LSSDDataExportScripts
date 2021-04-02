@@ -8,7 +8,7 @@ param (
 # Functions                                                               #
 ###########################################################################
 
-import-module ./EdsbyImportModule.psm1 -Scope Local
+import-module $PSScriptRoot/EdsbyImportModule.psm1 -Scope Local
 
 ###########################################################################
 # Script initialization                                                   #
