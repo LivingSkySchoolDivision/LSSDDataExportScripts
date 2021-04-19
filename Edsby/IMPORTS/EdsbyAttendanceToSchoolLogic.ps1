@@ -2,9 +2,7 @@ param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
     [switch]$PerformDeletes,
-    [switch]$DryDelete,
     [switch]$DryRun,
-    [switch]$AllowSyncToEmptyTable,
     [switch]$DisableSafeties
  )
 
@@ -91,7 +89,9 @@ catch {
 Write-Log "Loading required data from SchoolLogic DB..."
 
 # Convert to hashtables for easier consumption
+Write-Log " Loading homeroom blocks..."
 $HomeroomBlocks = Get-AllHomeroomBlocks -DBConnectionString $DBConnectionString
+Write-Log " Loading period blocks..."
 $PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 
 ###########################################################################
@@ -99,9 +99,12 @@ $PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 ###########################################################################
 
 Write-Log "Processing input file..."
-
+Write-Log " Rows to process: $($CSVInputFile.Length)"
 $AttendanceToImport = @{}
+$EarliestSeenDate = [datetime](Get-Date)
+$DiscoveredSchoolIDs = @()
 
+$Counter_ProcessedRows = 0
 foreach ($InputRow in $CSVInputFile)
 {
     # We don't care about "presents" so ignore those
@@ -140,6 +143,16 @@ foreach ($InputRow in $CSVInputFile)
     $NewRecord.Thumbprint = Get-Hash "$($NewRecord.iSchoolID)-$($NewRecord.iStudentID)-$($NewRecord.dDate.ToString("yyyyMMdd"))-$($NewRecord.iClassID)-$($NewRecord.iMeetingID)-$($NewRecord.iAttendanceStatusID)"
     $NewRecord.ValueHash = Get-Hash "$($NewRecord.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($NewRecord.mComment)-$($NewRecord.iAttendanceReasonsID)-$($NewRecord.mTags)"
 
+    # Check if this is the earliest date 
+    if ($NewRecord.dDate -lt $EarliestSeenDate) {
+        $EarliestSeenDate = $NewRecord.dDate
+    }
+
+    # Check if we've seen this school before
+    if ($DiscoveredSchoolIDs.Contains($NewRecord.iSchoolID) -eq $false) {
+        $DiscoveredSchoolIDs += $NewRecord.iSchoolID
+    }
+
     # Add to hashtable
     if ($AttendanceToImport.ContainsKey($($NewRecord.Thumbprint)) -eq $false) {
         $AttendanceToImport.Add($($NewRecord.Thumbprint), $NewRecord)
@@ -152,20 +165,30 @@ foreach ($InputRow in $CSVInputFile)
 
         if ($ExistingRecord.ValueHash -eq $NewRecord.ValueHash) {
             # Do nothing - the values are the same, so just ignore this duplicate.
-            Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
+            #Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
         } else {
             # Trust the one updated the most recently
             if ($NewRecord.dEdsbyLastUpdate -gt $ExistingRecord.dEdsbyLastUpdate) {
                 # Replace the existing record with a newer one
                 $AttendanceToImport[$($NewRecord.Thumbprint)] = $NewRecord
-                Write-Log "Overriding older record with newer one for $($NewRecord.Thumbprint)"
+                #Write-Log "Overriding older record with newer one for $($NewRecord.Thumbprint)"
             } else {
                 # Do nothing - Ignore the older record
-                Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
+                #Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
             }
         }
     }
+    
+    $Counter_ProcessedRows++
+    $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$CSVInputFile.Length) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Processing input file" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+    }
 }
+Write-Log "Finished processing $($AttendanceToImport.Keys.Count) entries"
+Write-Log "Earliest date in file: $EarliestSeenDate"
+Write-Log "Found $($DiscoveredSchoolIDs.Length) schools in input file."
+Write-Log "  $($DiscoveredSchoolIDs -join ",")"
 
 ###########################################################################
 # Compare to database                                                     #
@@ -173,16 +196,13 @@ foreach ($InputRow in $CSVInputFile)
 
 # Get a list of thumbprints and value hashes from the database, to compare
 
-# Which entries do we need to add?
-# Which entries do we need to update?
-# Which entries do we need to remove entirely?
+Write-Log "Loading existing attendance to compare to..."
 
-Write-Log "Caching existing attendance to compare to..."
-
-$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance WHERE lEdsbySyncDoNotTouch=0 ORDER BY cThumbprint;"  
+$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance WHERE lEdsbySyncDoNotTouch=0 AND dDate>='$EarliestSeenDate' AND iSchoolID IN ($($DiscoveredSchoolIDs -join ",")) ORDER BY cThumbprint;"  
 $ExistingAttendance_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ExistingAttendance
 
 $ExistingAttendance = @{}
+$Counter_ProcessedRows = 0
 foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
 {
     if ($null -ne $ExistingAttendanceRow.cThumbprint) {
@@ -194,22 +214,22 @@ foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
             $ExistingAttendance[$ExistingAttendanceRow.cThumbprint] = $ExistingAttendanceRow.cValueHash
         }
     }
+    $Counter_ProcessedRows++
+    $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$ExistingAttendance_Raw.Length) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Procssing attendance from DB..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+    }    
 }
 
-# Fail if we were unable to get any existing attendance
-if ($AllowSyncToEmptyTable -ne $true) {
-    if ($ExistingAttendance.Count -lt 1) {
-        Write-Log "No existing attendance found. Stopping for safety. To disable this safety check, use -AllowSyncToEmptyTable."
-        exit
-    }
-}
+Write-Log "Loaded $($ExistingAttendance.Keys.Count) absences from SchoolLogic"
 
 # Now go through attendance we're importing, and see what bucket it should be in
 $RecordsToInsert = @()
 $RecordsToUpdate = @()
 $ThumbprintsToDelete = @()
 
-Write-Log "Finding records to insert and update..."
+Write-Log "Comparing import to SchoolLogic..."
+$Counter_ProcessedRows = 0
 foreach($ImportedRecord in $AttendanceToImport.Values)
 {
     # Does this thumbprint exist in our table?
@@ -232,10 +252,17 @@ foreach($ImportedRecord in $AttendanceToImport.Values)
         # Thumbprint doesn't exist - add new
         $RecordsToInsert += $ImportedRecord
     }
+
+    $Counter_ProcessedRows++
+    $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$AttendanceToImport.Values.Count) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Finding records to insert or update..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+    }
 }
 
-if (($PerformDeletes -eq $true) -or ($DryDelete -eq $true)) {
+if ($PerformDeletes -eq $true) {
     Write-Log "Finding records to delete..."
+    $Counter_ProcessedRows = 0
     # Find attendance records that have been deleted
     foreach($ExistingThumbprint in $ExistingAttendance.Keys)
     {
@@ -246,24 +273,20 @@ if (($PerformDeletes -eq $true) -or ($DryDelete -eq $true)) {
         if ($AttendanceToImport.ContainsKey($ExistingThumbprint) -eq $false) {
             $ThumbprintsToDelete += $ExistingThumbprint
         }
+
+        $Counter_ProcessedRows++
+        $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$ExistingAttendance.Keys.Count) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Finding records to remove..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        }
     }
+} else {
+    Write-Log "Skipping deletes - use -PerformDeletes to enable deletes"
 }
 Write-Log "To insert: $($RecordsToInsert.Count)"
 Write-Log "To update: $($RecordsToUpdate.Count)"
 Write-Log "To delete: $($ThumbprintsToDelete.Count)"
 
-###########################################################################
-# Perform some safety checks                                              #
-###########################################################################
-
-if ($DisableSafeties -ne $true) {
-
-    # Stop if the script would delete more than 10% of the existing database entries
-    if ($ThumbprintsToDelete.Count -gt ($($ExistingAttendance.Count) * 0.1)) {
-        Write-Log "WARNING: Script would delete more than 10% of existing database entries. Stopping script for safety. To disable this safety, use -DisableSafeties"
-        exit
-    }
-}
 ###########################################################################
 # Perform SQL operations                                                  #
 ###########################################################################
@@ -277,6 +300,7 @@ if ($PerformDeletes -eq $true) {
     # Implement a limit on the number of records that this script will willingly delete
     if ($DryRun -ne $true) {
         Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
+        $Counter_ProcessedRows = 0
         foreach ($ThumbToDelete in $ThumbprintsToDelete) {
             if ($ThumbToDelete.Length -gt 1) {
                 Write-Log " > Deleting $ThumbToDelete"
@@ -291,6 +315,11 @@ if ($PerformDeletes -eq $true) {
                 }
                 $SqlConnection.close()
             }
+            $Counter_ProcessedRows++
+            $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$ThumbprintsToDelete.Count) * 100)
+            if ($PercentComplete % 5 -eq 0) {
+                Write-Progress -Activity "Deleting records..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+            }
         }
     } else {
         Write-Log "Skipping database write due to -DryRun"
@@ -298,6 +327,7 @@ if ($PerformDeletes -eq $true) {
 }
 
 Write-Log "Inserting $($RecordsToInsert.Count) records..."
+$Counter_ProcessedRows = 0
 if ($DryRun -ne $true) {
     foreach ($NewRecord in $RecordsToInsert) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
@@ -328,12 +358,19 @@ if ($DryRun -ne $true) {
             Write-Log " (Skipping SQL query due to -DryRun)"
         }
         $SqlConnection.close()
+
+        $Counter_ProcessedRows++
+        $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$RecordsToInsert.Count) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Inserting records..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        }
     }
 } else {
     Write-Log "Skipping database write due to -DryRun"
 }
 Write-Log "Updating $($RecordsToUpdate.Count) records..."
 if ($DryRun -ne $true) {
+    $Counter_ProcessedRows = 0
     foreach ($UpdatedRecord in $RecordsToUpdate) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
         $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
@@ -352,6 +389,12 @@ if ($DryRun -ne $true) {
             Write-Log " (Skipping SQL query due to -DryRun)"
         }
         $SqlConnection.close()
+
+        $Counter_ProcessedRows++
+        $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$RecordsToUpdate.Count) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Updating records..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
+        }
     }
 } else {
     Write-Log "Skipping database write due to -DryRun"
