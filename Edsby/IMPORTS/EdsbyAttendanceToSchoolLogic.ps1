@@ -1,11 +1,7 @@
 param (
     [Parameter(Mandatory=$true)][string]$InputFileName,
     [string]$ConfigFilePath,
-    [switch]$PerformDeletes,
-    [switch]$DryDelete,
-    [switch]$DryRun,
-    [switch]$AllowSyncToEmptyTable,
-    [switch]$DisableSafeties
+    [switch]$DryRun
  )
 
 ###########################################################################
@@ -91,7 +87,9 @@ catch {
 Write-Log "Loading required data from SchoolLogic DB..."
 
 # Convert to hashtables for easier consumption
+Write-Log " Loading homeroom blocks..."
 $HomeroomBlocks = Get-AllHomeroomBlocks -DBConnectionString $DBConnectionString
+Write-Log " Loading period blocks..."
 $PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 
 ###########################################################################
@@ -99,9 +97,10 @@ $PeriodBlocks = Get-AllPeriodBlocks -DBConnectionString $DBConnectionString
 ###########################################################################
 
 Write-Log "Processing input file..."
+Write-Log " Rows to process: $($CSVInputFile.Length)"
+$AttendanceToImport = @()
 
-$AttendanceToImport = @{}
-
+$Counter_ProcessedRows = 0
 foreach ($InputRow in $CSVInputFile)
 {
     # We don't care about "presents" so ignore those
@@ -130,179 +129,48 @@ foreach ($InputRow in $CSVInputFile)
         iBlockNumber = Convert-BlockID -EdsbyPeriodsID $([int]$InputRow.MeetingPeriodIDs) -ClassName $([string]$InputRow.SectionName) -PeriodBlockDataTable $PeriodBlocks -DailyBlockDataTable $HomeroomBlocks
         iAttendanceStatusID = Convert-AttendanceStatus -AttendanceCode $([string]$InputRow.IncidentCode) -AttendanceReasonCode $([string]$InputRow.IncidentReasonCode)
         iAttendanceReasonsID = Convert-AttendanceReason -InputString $([string]$InputRow.IncidentReasonCode)
-
-        # We'll fill these in below, because it's easier to refer to all the fields we need
-        Thumbprint = ""
-        ValueHash = ""
     }
 
-    # Calculate hashes
-    $NewRecord.Thumbprint = Get-Hash "$($NewRecord.iSchoolID)-$($NewRecord.iStudentID)-$($NewRecord.dDate.ToString("yyyyMMdd"))-$($NewRecord.iClassID)-$($NewRecord.iMeetingID)-$($NewRecord.iAttendanceStatusID)"
-    $NewRecord.ValueHash = Get-Hash "$($NewRecord.dEdsbyLastUpdate.ToString("yyyyMMdd"))-$($NewRecord.mComment)-$($NewRecord.iAttendanceReasonsID)-$($NewRecord.mTags)"
-
-    # Add to hashtable
-    if ($AttendanceToImport.ContainsKey($($NewRecord.Thumbprint)) -eq $false) {
-        $AttendanceToImport.Add($($NewRecord.Thumbprint), $NewRecord)
-    } else {
-        # A thumbprint already exists, so now we need to determine which we keep
-        # Is the value hash the same? If so, discard
-        # If the value hash is different, use the one updated most recently
-
-        $ExistingRecord = $AttendanceToImport[$($NewRecord.Thumbprint)]
-
-        if ($ExistingRecord.ValueHash -eq $NewRecord.ValueHash) {
-            # Do nothing - the values are the same, so just ignore this duplicate.
-            Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Values identical"
-        } else {
-            # Trust the one updated the most recently
-            if ($NewRecord.dEdsbyLastUpdate -gt $ExistingRecord.dEdsbyLastUpdate) {
-                # Replace the existing record with a newer one
-                $AttendanceToImport[$($NewRecord.Thumbprint)] = $NewRecord
-                Write-Log "Overriding older record with newer one for $($NewRecord.Thumbprint)"
-            } else {
-                # Do nothing - Ignore the older record
-                Write-Log "Ignoring duplicate record for $($NewRecord.Thumbprint) - Record is older"
-            }
-        }
+    if ($null -ne $NewRecord) {
+        $AttendanceToImport += $NewRecord
+    }
+    
+    $Counter_ProcessedRows++
+    $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$CSVInputFile.Length) * 100)
+    if ($PercentComplete % 5 -eq 0) {
+        Write-Progress -Activity "Processing input file" -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
     }
 }
+Write-Log "Finished processing $($AttendanceToImport.Count) entries"
 
-###########################################################################
-# Compare to database                                                     #
-###########################################################################
-
-# Get a list of thumbprints and value hashes from the database, to compare
-
-# Which entries do we need to add?
-# Which entries do we need to update?
-# Which entries do we need to remove entirely?
-
-Write-Log "Caching existing attendance to compare to..."
-
-$SQLQuery_ExistingAttendance = "SELECT cThumbprint, cValueHash FROM Attendance WHERE lEdsbySyncDoNotTouch=0 ORDER BY cThumbprint;"  
-$ExistingAttendance_Raw = Get-SQLData -ConnectionString $DBConnectionString -SQLQuery $SQLQuery_ExistingAttendance
-
-$ExistingAttendance = @{}
-foreach($ExistingAttendanceRow in $ExistingAttendance_Raw)
-{
-    if ($null -ne $ExistingAttendanceRow.cThumbprint) {
-        #$ExistingAttendance += @{ $ExistingAttendanceRow.cThumbprint = $ExistingAttendanceRow.cValueHash }
-
-        if ($ExistingAttendance.ContainsKey($ExistingAttendanceRow.cThumbprint) -eq $false) {
-            $ExistingAttendance.Add($ExistingAttendanceRow.cThumbprint, $ExistingAttendanceRow.cValueHash)
-        } else {
-            $ExistingAttendance[$ExistingAttendanceRow.cThumbprint] = $ExistingAttendanceRow.cValueHash
-        }
-    }
-}
-
-# Fail if we were unable to get any existing attendance
-if ($AllowSyncToEmptyTable -ne $true) {
-    if ($ExistingAttendance.Count -lt 1) {
-        Write-Log "No existing attendance found. Stopping for safety. To disable this safety check, use -AllowSyncToEmptyTable."
-        exit
-    }
-}
-
-# Now go through attendance we're importing, and see what bucket it should be in
-$RecordsToInsert = @()
-$RecordsToUpdate = @()
-$ThumbprintsToDelete = @()
-
-Write-Log "Finding records to insert and update..."
-foreach($ImportedRecord in $AttendanceToImport.Values)
-{
-    # Does this thumbprint exist in our table?
-    # If not, insert it
-    # If yes, check it's value hash - does it match?
-    #  If not, update it
-    #  If yes, no work needs to be done
-
-
-    if ($ExistingAttendance.ContainsKey($($ImportedRecord.Thumbprint)))
-    {
-        if ($ExistingAttendance[$ImportedRecord.Thumbprint] -ne $($ImportedRecord.ValueHash))
-        {
-            # Flag this one for an update
-            $RecordsToUpdate += $ImportedRecord
-        } else {
-            # Do nothing - value hashes match, ignore this one
-        }
-    } else {
-        # Thumbprint doesn't exist - add new
-        $RecordsToInsert += $ImportedRecord
-    }
-}
-
-if (($PerformDeletes -eq $true) -or ($DryDelete -eq $true)) {
-    Write-Log "Finding records to delete..."
-    # Find attendance records that have been deleted
-    foreach($ExistingThumbprint in $ExistingAttendance.Keys)
-    {
-        # Does this thumbprint exist in the data we're importing?
-        #  If yes, do nothing
-        #  If no, flag for removal
-
-        if ($AttendanceToImport.ContainsKey($ExistingThumbprint) -eq $false) {
-            $ThumbprintsToDelete += $ExistingThumbprint
-        }
-    }
-}
-Write-Log "To insert: $($RecordsToInsert.Count)"
-Write-Log "To update: $($RecordsToUpdate.Count)"
-Write-Log "To delete: $($ThumbprintsToDelete.Count)"
-
-###########################################################################
-# Perform some safety checks                                              #
-###########################################################################
-
-if ($DisableSafeties -ne $true) {
-
-    # Stop if the script would delete more than 10% of the existing database entries
-    if ($ThumbprintsToDelete.Count -gt ($($ExistingAttendance.Count) * 0.1)) {
-        Write-Log "WARNING: Script would delete more than 10% of existing database entries. Stopping script for safety. To disable this safety, use -DisableSafeties"
-        exit
-    }
-}
 ###########################################################################
 # Perform SQL operations                                                  #
 ###########################################################################
 
+Exit-PSHostProcess
 # Set up the SQL connection
 $SqlConnection = new-object System.Data.SqlClient.SqlConnection
 $SqlConnection.ConnectionString = $DBConnectionString
 
 
-if ($PerformDeletes -eq $true) {
-    # Implement a limit on the number of records that this script will willingly delete
-    if ($DryRun -ne $true) {
-        Write-Log "Deleting $($ThumbprintsToDelete.Count) records..."
-        foreach ($ThumbToDelete in $ThumbprintsToDelete) {
-            if ($ThumbToDelete.Length -gt 1) {
-                Write-Log " > Deleting $ThumbToDelete"
-                $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-                $SqlCommand.CommandText = "DELETE FROM Attendance WHERE cThumbprint=@THUMB;"
-                $SqlCommand.Parameters.AddWithValue("@THUMB",$ThumbToDelete) | Out-Null
-                $SqlCommand.Connection = $SqlConnection
-
-                $SqlConnection.open()
-                if ($DryRun -ne $true) {
-                    $Sqlcommand.ExecuteNonQuery()
-                }
-                $SqlConnection.close()
-            }
-        }
-    } else {
-        Write-Log "Skipping database write due to -DryRun"
-    }
-}
-
-Write-Log "Inserting $($RecordsToInsert.Count) records..."
+Write-Log "Inserting/Updating $($AttendanceToImport.Count) records..."
+$Counter_ProcessedRows = 0
 if ($DryRun -ne $true) {
-    foreach ($NewRecord in $RecordsToInsert) {
+    foreach ($NewRecord in $AttendanceToImport) {
         $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-        $SqlCommand.CommandText = "INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID,cThumbprint,cValueHash)
-                                        VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID,@THUMB,@VALHASH);"
+        $SqlCommand.CommandText = "UPDATE Attendance
+                                    SET 
+                                        iAttendanceStatusID=@STATUSID,
+                                        iAttendanceReasonsID=@REASONID
+                                    WHERE
+                                        iStudentID=@STUDENTID
+                                        AND iClassID=@CLASSID
+                                        AND iBlockNumber=@BLOCKNUM
+                                        AND dDate=@DDATE
+                                        AND iSchoolID=@ISCHOOLID
+                                    IF @@ROWCOUNT = 0
+                                    INSERT INTO Attendance(iBlockNumber, iStudentID, iAttendanceStatusID, iAttendanceReasonsID, dDate, iClassID, iMinutes, mComment, iStaffID, iSchoolID, cEdsbyIncidentID, mEdsbyTags, dEdsbyLastUpdated,iMeetingID)
+                                        VALUES(@BLOCKNUM,@STUDENTID,@STATUSID,@REASONID,@DDATE,@CLASSID,@MINUTES,@MCOMMENT,@ISTAFFID,@ISCHOOLID,@EDSBYINCIDENTID,@EDSBYTAGS,@EDSBYLASTUPDATED,@MEETINGID);"
         $SqlCommand.Parameters.AddWithValue("@BLOCKNUM",$NewRecord.iBlockNumber) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@STUDENTID",$NewRecord.iStudentID) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@STATUSID",$NewRecord.iAttendanceStatusID) | Out-Null
@@ -317,46 +185,24 @@ if ($DryRun -ne $true) {
         $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$NewRecord.mTags) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$NewRecord.dEdsbyLastUpdate) | Out-Null
         $SqlCommand.Parameters.AddWithValue("@MEETINGID",$NewRecord.iMeetingID) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@THUMB",$NewRecord.Thumbprint) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@VALHASH",$NewRecord.ValueHash) | Out-Null
         $SqlCommand.Connection = $SqlConnection
 
         $SqlConnection.open()
         if ($DryRun -ne $true) {
-            $Sqlcommand.ExecuteNonQuery()
+            $Sqlcommand.ExecuteNonQuery() | Out-Null
         } else {
             Write-Log " (Skipping SQL query due to -DryRun)"
         }
         $SqlConnection.close()
-    }
-} else {
-    Write-Log "Skipping database write due to -DryRun"
-}
-Write-Log "Updating $($RecordsToUpdate.Count) records..."
-if ($DryRun -ne $true) {
-    foreach ($UpdatedRecord in $RecordsToUpdate) {
-        $SqlCommand = New-Object System.Data.SqlClient.SqlCommand
-        $SqlCommand.CommandText = "UPDATE Attendance SET iAttendanceReasonsID=@REASONID, mComment=@MCOMMENT, mEdsbyTags=@EDSBYTAGS, dEdsbyLastUpdated=@EDSBYLASTUPDATED, cValueHash=@VALHASH WHERE cThumbprint=@THUMB"
-        $SqlCommand.Parameters.AddWithValue("@REASONID",$UpdatedRecord.iAttendanceReasonsID) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@MCOMMENT",$UpdatedRecord.mComment) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@EDSBYTAGS",$UpdatedRecord.mTags) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@EDSBYLASTUPDATED",$UpdatedRecord.dEdsbyLastUpdate) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@VALHASH",$UpdatedRecord.ValueHash) | Out-Null
-        $SqlCommand.Parameters.AddWithValue("@THUMB",$UpdatedRecord.Thumbprint) | Out-Null
-        $SqlCommand.Connection = $SqlConnection
 
-        $SqlConnection.open()
-        if ($DryRun -ne $true) {
-            $Sqlcommand.ExecuteNonQuery()
-        } else {
-            Write-Log " (Skipping SQL query due to -DryRun)"
+        $Counter_ProcessedRows++
+        $PercentComplete = [int]([decimal]($Counter_ProcessedRows/$AttendanceToImport.Count) * 100)
+        if ($PercentComplete % 5 -eq 0) {
+            Write-Progress -Activity "Inserting records..." -Status "$PercentComplete% Complete:" -PercentComplete $PercentComplete;
         }
-        $SqlConnection.close()
     }
 } else {
     Write-Log "Skipping database write due to -DryRun"
 }
-
 Write-Log "Done!"
 remove-module EdsbyImportModule
-
