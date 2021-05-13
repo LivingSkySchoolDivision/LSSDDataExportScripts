@@ -14,7 +14,7 @@ $SqlQuery = "SELECT
                 HR.iSchoolID as SchoolID,
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) as SectionGUID,
                 CONCAT('STUDENT-',S.iStudentID) as StudentGUID,
-				FORMAT(SS.dInDate, 'yyyy-MM-dd') as StartDate
+				CASE WHEN SS.dInDate > t.dStartDate THEN FORMAT(SS.dInDate, 'yyyy-MM-dd') ELSE FORMAT(t.dStartDate, 'yyyy-MM-dd') END AS StartDate
             FROM
                 Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
