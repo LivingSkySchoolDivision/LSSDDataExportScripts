@@ -20,7 +20,8 @@ $iSchoolIDs = Foreach ($ID in $ActiveSchools) {
 $SqlQuery = "SELECT 
                 HR.iSchoolID as SchoolID,
                 CONCAT(HR.iSchoolID,'-',HR.iHomeroomID) as SectionGUID,
-                CONCAT('STUDENT-',S.iStudentID) as StudentGUID
+                CONCAT('STUDENT-',S.iStudentID) as StudentGUID,
+				FORMAT(SS.dInDate, 'yyyy-MM-dd') as StartDate
             FROM
                 Homeroom HR
                 INNER JOIN Student S ON HR.iHomeroomID = S.iHomeroomID
@@ -38,7 +39,8 @@ $SqlQuery = "SELECT
             SELECT 
                 E.iSchoolID as SchoolID,
                 CONCAT(E.iSchoolID,'-',E.iClassID) as SectionGUID,
-                CONCAT('STUDENT-',E.iStudentID) as StudentGUID
+                CONCAT('STUDENT-',E.iStudentID) as StudentGUID,
+				FORMAT(E.dInDate, 'yyyy-MM-dd') AS StartDate
             FROM
                 Enrollment E
                 INNER JOIN CLASS C ON E.iClassID = C.iClassID
